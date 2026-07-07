@@ -1,2 +1,2 @@
 # this is a review system
-# 新增功能1，2
+# 新增功能1
