@@ -1,0 +1,37 @@
+package com.lzh.controller;
+
+import com.lzh.common.Result;
+import com.lzh.service.IMovieService;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+@Slf4j
+@RestController
+@RequestMapping("/movies")
+public class MovieController {
+
+    @Resource
+    private IMovieService movieService;
+
+    @GetMapping("/{movieId}")
+    public Result getMovieInfo(@PathVariable("movieId") Long movieId){
+        return movieService.getMovieInfo(movieId);
+    }
+    @GetMapping("/list")
+    public Result listMovies(
+            @RequestParam("current") Long current,
+            @RequestParam(value = "name",required = false) String name,
+            @RequestParam(value = "genre",required = false) String genre,
+            @RequestParam(value = "region",required = false) String region
+    ){
+        return movieService.listMovies(current,name,genre,region);
+    }
+    @GetMapping("/hot")
+    public Result listHotMovies(
+            @RequestParam("current") Long current
+    ){
+        return movieService.listHotMovies(current);
+    }
+
+}
