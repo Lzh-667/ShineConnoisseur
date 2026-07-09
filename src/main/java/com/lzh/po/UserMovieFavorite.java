@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("user_movie_relation")
-public class UserMovieRelation {
+@TableName("user_movie_favorite")
+public class UserMovieFavorite {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -22,16 +22,6 @@ public class UserMovieRelation {
     @TableField("movie_id")
     private Long movieId;
 
-    /** 0-未收藏，1-已收藏 */
-    @TableField("is_favorite")
-    private Integer isFavorite;
-
-    /** 个人标签 */
-    private String tags;
-
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
-
-    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
 }
