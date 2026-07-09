@@ -20,7 +20,7 @@ public class MovieController {
     }
     @GetMapping("/list")
     public Result listMovies(
-            @RequestParam("current") Long current,
+            @RequestParam(value = "current",defaultValue = "1") Long current,
             @RequestParam(value = "title",required = false) String title,
             @RequestParam(value = "genre",required = false) String genre,
             @RequestParam(value = "region",required = false) String region
@@ -29,7 +29,7 @@ public class MovieController {
     }
     @GetMapping("/hot")
     public Result listHotMovies(
-            @RequestParam("current") Long current
+            @RequestParam(value = "current",defaultValue = "1") Long current
     ){
         return movieService.listHotMovies(current);
     }
