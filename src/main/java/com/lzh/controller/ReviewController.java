@@ -55,7 +55,6 @@ public class ReviewController {
         return reviewService.updateReview(reviewId,reviewDTO);
     }
 
-    //TODO 未测试
     @DeleteMapping("/{reviewId}")
     public Result deleteReview(@PathVariable("reviewId") Long reviewId){
         return reviewService.deleteReview(reviewId);
