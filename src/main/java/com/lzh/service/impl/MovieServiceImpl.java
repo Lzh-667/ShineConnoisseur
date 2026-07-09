@@ -53,12 +53,12 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                 .orderByDesc("release_date")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
-        //包装为movieSimpleVO
+        //2.包装为movieSimpleVO
         List<MovieSimpleVO> records = page.getRecords().stream()
                 .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
                 .toList();
 
-        //封装为PageResult并返回
+        //3.封装为PageResult并返回
         PageResult<MovieSimpleVO> result = new PageResult<>();
         result.setTotal(page.getTotal());
         result.setRecords(records);
