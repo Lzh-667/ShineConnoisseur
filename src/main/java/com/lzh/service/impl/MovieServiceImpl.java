@@ -142,7 +142,6 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         }
         //3.redis不存在，查数据库重建缓存
         List<Long> ids = movieFavoriteService.query()
-                .eq("user_id", userId)
                 .eq("movie_id", movieId)
                 .list()
                 .stream()
@@ -181,6 +180,10 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         }
         else{
             //3.2.收藏
+            //防止收藏不存在的电影
+            if(!exists(new QueryWrapper<Movie>().eq("id",movieId))){
+                return Result.fail("收藏的电影不存在");
+            }
             //防止重复收藏
             boolean exist = movieFavoriteService.query()
                     .eq("user_id", userId)
@@ -188,10 +191,6 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                     .exists();
             if(exist){
                 return Result.fail("不能重复收藏");
-            }
-            //防止收藏不存在的电影
-            if(!exists(new QueryWrapper<Movie>().eq("id",movieId))){
-                return Result.fail("收藏的电影不存在");
             }
             //新增数据
             MovieFavorite movieFavorite = new MovieFavorite();

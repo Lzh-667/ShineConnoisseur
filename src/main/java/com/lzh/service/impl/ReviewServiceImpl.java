@@ -227,6 +227,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
         else{
             //3.2.点赞
+            //防止点赞不存在的影评
+            if(!exists(new QueryWrapper<Review>().eq("id",reviewId))){
+                return Result.fail("点赞的影评不存在");
+            }
             //防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
@@ -235,10 +239,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     .exists();
             if(exist){
                 return Result.fail("不能重复点赞");
-            }
-            //防止点赞不存在的影评
-            if(!exists(new QueryWrapper<Review>().eq("id",reviewId))){
-                return Result.fail("点赞的影评不存在");
             }
             //新增数据
             LikeRecord likeRecord = new LikeRecord();
