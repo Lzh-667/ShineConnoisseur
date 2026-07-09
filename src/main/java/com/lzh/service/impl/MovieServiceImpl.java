@@ -15,6 +15,7 @@ import com.lzh.utils.SystemConstants;
 import com.lzh.vo.MovieSimpleVO;
 import com.lzh.vo.MovieVO;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements IMovieService {
 
     @Resource
@@ -92,14 +94,12 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         String key = RedisConstants.HOT_MOVIE_KEY;
         //1.查Redis
         String json = stringRedisTemplate.opsForValue().get(key);
-        if(json != null){
-            List<MovieSimpleVO> list = JSONUtil.toList(json, MovieSimpleVO.class);
-            return Result.ok(list);
+        //2.不存在,不符合正常情况，返回失败
+        if(json == null){
+            return Result.fail("服务器异常");
         }
-        //2.Redis没有，重新加载
-        updateHotMovieCache();
-        //3.返回
-        return Result.ok(JSONUtil.toList(stringRedisTemplate.opsForValue().get(key), MovieSimpleVO.class));
+        //3.返回热门电影
+        return Result.ok(JSONUtil.toList(json, MovieSimpleVO.class));
     }
     @Override
     public void updateHotMovieCache(){
@@ -109,13 +109,12 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                 .orderByDesc("rating_sum")
                 .last("limit 10")
                 .list();
-
         //2. 转VO
         List<MovieSimpleVO> vos = movies.stream()
                 .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
                 .toList();
-
         //3. 写入Redis
         stringRedisTemplate.opsForValue().set(RedisConstants.HOT_MOVIE_KEY, JSONUtil.toJsonStr(vos));
+        log.info("热门电影缓存刷新成功");
     }
 }
