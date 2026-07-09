@@ -72,6 +72,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         Page<Movie> page = query()
                 .orderByDesc("rating_count")
                 .orderByDesc("rating_sum")
+                .orderByDesc("release_date")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
         //2.包装为movieSimpleVO
