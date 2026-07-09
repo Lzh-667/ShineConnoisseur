@@ -4,15 +4,19 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.mapper.MovieMapper;
 import com.lzh.po.Movie;
+import com.lzh.po.MovieFavorite;
+import com.lzh.service.IMovieFavoriteService;
 import com.lzh.service.IMovieService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
+import com.lzh.utils.UserHolder;
 import com.lzh.vo.MovieSimpleVO;
 import com.lzh.vo.MovieVO;
 import jakarta.annotation.Resource;
@@ -31,6 +35,8 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private IMovieFavoriteService movieFavoriteService;
     @Override
     public Result getMovieInfo(Long movieId) {
         //1.判断redis中是否存在
@@ -120,4 +126,90 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         stringRedisTemplate.opsForValue().set(RedisConstants.HOT_MOVIE_KEY, JSONUtil.toJsonStr(vos));
         log.info("热门电影缓存刷新成功");
     }
+
+    @Override
+    public Result isFavorite(Long movieId) {
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.查redis
+        String movieKey = RedisConstants.MOVIE_FAVORITE_KEY + movieId;
+        Boolean exists = stringRedisTemplate.hasKey(movieKey);
+        if (exists) {
+            Boolean isFavorite = stringRedisTemplate.opsForSet()
+                    .isMember(movieKey, userId.toString());
+
+            return Result.ok(Boolean.TRUE.equals(isFavorite));
+        }
+        //3.redis不存在，查数据库重建缓存
+        List<Long> ids = movieFavoriteService.query()
+                .eq("user_id", userId)
+                .eq("movie_id", movieId)
+                .list()
+                .stream()
+                .map(MovieFavorite::getUserId)
+                .toList();
+
+        if (!ids.isEmpty()) {
+            String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
+            stringRedisTemplate.opsForSet().add(movieKey, values);
+        }
+
+        return Result.ok(ids.contains(userId));
+    }
+
+    @Override
+    public Result favoriteMovie(Long movieId, Boolean isFavorite) {
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.判断是收藏还是取消收藏
+        if (isFavorite) {
+            //3.1.取消收藏
+            //删除数据
+            boolean isSuccess = movieFavoriteService.remove(new QueryWrapper<MovieFavorite>()
+                    .eq("user_id", userId)
+                    .eq("movie_id", movieId)
+            );
+            if(isSuccess){
+                log.info("取消收藏成功");
+                //移除缓存
+                stringRedisTemplate.delete(RedisConstants.MOVIE_FAVORITE_KEY + movieId);
+            }
+            else{
+                log.info("取消收藏失败");
+                return Result.fail("取消收藏失败");
+            }
+        }
+        else{
+            //3.2.收藏
+            //防止重复收藏
+            boolean exist = movieFavoriteService.query()
+                    .eq("user_id", userId)
+                    .eq("movie_id", movieId)
+                    .exists();
+            if(exist){
+                return Result.fail("不能重复收藏");
+            }
+            //防止收藏不存在的电影
+            if(!exists(new QueryWrapper<Movie>().eq("id",movieId))){
+                return Result.fail("收藏的电影不存在");
+            }
+            //新增数据
+            MovieFavorite movieFavorite = new MovieFavorite();
+            movieFavorite.setUserId(userId);
+            movieFavorite.setMovieId(movieId);
+            boolean isSuccess = movieFavoriteService.save(movieFavorite);
+            if (isSuccess) {
+                log.info("收藏成功");
+                //移除缓存
+                stringRedisTemplate.delete(RedisConstants.MOVIE_FAVORITE_KEY + movieId);
+            }
+            else{
+                log.info("收藏失败");
+                return Result.fail("收藏失败");
+            }
+        }
+        return Result.ok();
+    }
+
+
 }

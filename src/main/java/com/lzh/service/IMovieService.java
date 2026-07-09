@@ -13,4 +13,8 @@ public interface IMovieService extends IService<Movie> {
     Result listHotMovies();
 
     void updateHotMovieCache();
+
+    Result isFavorite(Long movieId);
+
+    Result favoriteMovie(Long movieId, Boolean isFavorite);
 }

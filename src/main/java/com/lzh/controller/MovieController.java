@@ -31,5 +31,16 @@ public class MovieController {
     public Result listHotMovies(){
         return movieService.listHotMovies();
     }
+    @GetMapping("/or/not/{movieId}")
+    public Result isFavorite(@PathVariable("movieId") Long movieId){
+        return movieService.isFavorite(movieId);
+    }
+    @PostMapping("/favorite/{movieId}/{isFavorite}")
+    public Result favoriteMovie(
+            @PathVariable("movieId") Long movieId,
+            @PathVariable("isFavorite") Boolean isFavorite
+    ){
+        return movieService.favoriteMovie(movieId,isFavorite);
+    }
 
 }
