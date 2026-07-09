@@ -23,8 +23,14 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         reviewComment.setUserId(userId);
         reviewComment.setReviewId(reviewId);
         if(reviewComment.getParentId() != 0){
-            Long replyUserId = query().eq("id", reviewComment.getParentId()).one().getUserId();
-            reviewComment.setReplyUserId(replyUserId);
+            ReviewComment parentComment = query().eq("id", reviewComment.getParentId()).one();
+            if(parentComment == null){
+                return Result.fail("回复的评论不存在");
+            }
+            if(!parentComment.getReviewId().equals(reviewId)){
+                return Result.fail("非法评论");
+            }
+            reviewComment.setReplyUserId(parentComment.getUserId());
         }
         //3.保存到数据库
         boolean isSuccess = save(reviewComment);
