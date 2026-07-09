@@ -1,6 +1,7 @@
 package com.lzh.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -62,7 +63,8 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
             movieVO.setRating(BigDecimal.ZERO);
         }
         //4.写入redis
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(movieVO), RedisConstants.MOVIE_INFO_TTL, TimeUnit.MINUTES);
+        long ttl = RedisConstants.MOVIE_INFO_TTL + RandomUtil.randomInt(5);
+        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(movieVO), ttl, TimeUnit.MINUTES);
         return Result.ok(movieVO);
     }
 
