@@ -89,23 +89,33 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
     @Override
     public Result listHotMovies(Long current) {
-        //1.查询电影列表
-        Page<Movie> page = query()
+        String key = RedisConstants.HOT_MOVIE_KEY;
+        //1.查Redis
+        String json = stringRedisTemplate.opsForValue().get(key);
+        if(json != null){
+            List<MovieSimpleVO> list = JSONUtil.toList(json, MovieSimpleVO.class);
+            return Result.ok(list);
+        }
+        //2.Redis没有，重新加载
+        updateHotMovieCache();
+        //3.返回
+        return Result.ok(JSONUtil.toList(stringRedisTemplate.opsForValue().get(key), MovieSimpleVO.class));
+    }
+    @Override
+    public void updateHotMovieCache(){
+        //1. 查询热门电影
+        List<Movie> movies = query()
                 .orderByDesc("rating_count")
                 .orderByDesc("rating_sum")
-                .orderByDesc("release_date")
-                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+                .last("limit 10")
+                .list();
 
-        //2.包装为movieSimpleVO
-        List<MovieSimpleVO> records = page.getRecords().stream()
+        //2. 转VO
+        List<MovieSimpleVO> vos = movies.stream()
                 .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
                 .toList();
 
-        //3.封装为PageResult并返回
-        PageResult<MovieSimpleVO> result = new PageResult<>();
-        result.setTotal(page.getTotal());
-        result.setRecords(records);
-
-        return Result.ok(result);
+        //3. 写入Redis
+        stringRedisTemplate.opsForValue().set(RedisConstants.HOT_MOVIE_KEY, JSONUtil.toJsonStr(vos));
     }
 }

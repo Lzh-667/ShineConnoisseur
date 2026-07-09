@@ -11,4 +11,6 @@ public interface IMovieService extends IService<Movie> {
     Result listMovies(Long current, String name, String genre, String region);
 
     Result listHotMovies(Long current);
+
+    void updateHotMovieCache();
 }
