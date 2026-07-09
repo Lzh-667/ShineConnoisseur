@@ -68,6 +68,22 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
     @Override
     public Result listHotMovies(Long current) {
+        //1.查询电影列表
+        Page<Movie> page = query()
+                .orderByDesc("rating_count")
+                .orderByDesc("rating_sum")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+
+        //2.包装为movieSimpleVO
+        List<MovieSimpleVO> records = page.getRecords().stream()
+                .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
+                .toList();
+
+        //3.封装为PageResult并返回
+        PageResult<MovieSimpleVO> result = new PageResult<>();
+        result.setTotal(page.getTotal());
+        result.setRecords(records);
+
         return Result.ok();
     }
 }
