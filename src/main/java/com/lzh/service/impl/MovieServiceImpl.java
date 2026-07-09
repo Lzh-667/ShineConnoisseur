@@ -107,6 +107,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         List<Movie> movies = query()
                 .orderByDesc("rating_count")
                 .orderByDesc("rating_sum")
+                .orderByDesc("release_date")
                 .last("limit 10")
                 .list();
         //2. 转VO
