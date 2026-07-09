@@ -44,10 +44,10 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     }
 
     @Override
-    public Result listMovies(Long current, String name, String genre, String region) {
+    public Result listMovies(Long current, String title, String genre, String region) {
         //1.查询电影列表
         Page<Movie> page = query()
-                .like(StrUtil.isNotBlank(name),"name", name)
+                .like(StrUtil.isNotBlank(title),"title", title)
                 .eq(StrUtil.isNotBlank(genre),"genre", genre)
                 .eq(StrUtil.isNotBlank(region),"region", region)
                 .orderByDesc("release_date")
