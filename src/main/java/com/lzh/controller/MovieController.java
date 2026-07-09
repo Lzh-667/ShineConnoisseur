@@ -28,10 +28,8 @@ public class MovieController {
         return movieService.listMovies(current,title,genre,region);
     }
     @GetMapping("/hot")
-    public Result listHotMovies(
-            @RequestParam(value = "current",defaultValue = "1") Long current
-    ){
-        return movieService.listHotMovies(current);
+    public Result listHotMovies(){
+        return movieService.listHotMovies();
     }
 
 }

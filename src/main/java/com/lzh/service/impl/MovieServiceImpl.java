@@ -88,7 +88,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     }
 
     @Override
-    public Result listHotMovies(Long current) {
+    public Result listHotMovies() {
         String key = RedisConstants.HOT_MOVIE_KEY;
         //1.查Redis
         String json = stringRedisTemplate.opsForValue().get(key);
