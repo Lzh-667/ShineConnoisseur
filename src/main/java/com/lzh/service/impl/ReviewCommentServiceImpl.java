@@ -22,6 +22,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         BeanUtils.copyProperties(reviewCommentDTO,reviewComment);
         reviewComment.setUserId(userId);
         reviewComment.setReviewId(reviewId);
+        //3.处理回复评论
         if(reviewComment.getParentId() != 0){
             ReviewComment parentComment = query().eq("id", reviewComment.getParentId()).one();
             if(parentComment == null){
