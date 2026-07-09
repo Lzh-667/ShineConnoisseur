@@ -84,6 +84,6 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         result.setTotal(page.getTotal());
         result.setRecords(records);
 
-        return Result.ok();
+        return Result.ok(result);
     }
 }
