@@ -22,7 +22,6 @@ public class FollowController {
     public Result getFollowingList() {
         return followService.getFollowingList();
     }
-    //TODO 未测试
     @GetMapping("/{id}/{isFollow}")
     public Result follow(@PathVariable("id") Long id, @PathVariable("isFollow") Boolean isFollow){
         return followService.follow(id, isFollow);
