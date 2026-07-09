@@ -2,6 +2,7 @@ package com.lzh.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.PageResult;
@@ -9,25 +10,43 @@ import com.lzh.common.Result;
 import com.lzh.mapper.MovieMapper;
 import com.lzh.po.Movie;
 import com.lzh.service.IMovieService;
+import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.vo.MovieSimpleVO;
 import com.lzh.vo.MovieVO;
+import jakarta.annotation.Resource;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements IMovieService {
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
     @Override
     public Result getMovieInfo(Long movieId) {
-        //1.判断电影是否存在
+        //1.判断redis中是否存在
+        String key = RedisConstants.MOVIE_INFO_KEY + movieId;
+        String movieJson = stringRedisTemplate.opsForValue().get(key);
+        if(movieJson != null){
+            if(movieJson.isEmpty()){
+                return Result.fail("电影不存在");
+            }
+            MovieVO movieVO = JSONUtil.toBean(movieJson, MovieVO.class);
+            return Result.ok(movieVO);
+        }
+        //2.查数据库，判断电影是否存在
         Movie movie = getById(movieId);
         if (movie == null) {
+            stringRedisTemplate.opsForValue().set(key, "", 5, TimeUnit.MINUTES);
             return Result.fail("电影不存在");
         }
-        //2.转化为VO并返回
+        //3.转化为VO并返回
         MovieVO movieVO = BeanUtil.copyProperties(movie, MovieVO.class);
         if(movie.getRatingCount()>0){
             BigDecimal rating = movie.getRatingSum()
@@ -40,6 +59,8 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         }else{
             movieVO.setRating(BigDecimal.ZERO);
         }
+        //4.写入redis
+        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(movieVO), RedisConstants.MOVIE_INFO_TTL, TimeUnit.MINUTES);
         return Result.ok(movieVO);
     }
 
