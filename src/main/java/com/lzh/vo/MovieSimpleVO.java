@@ -8,5 +8,4 @@ public class MovieSimpleVO {
     private String title;
     /** 海报URL */
     private String cover;
-
 }
