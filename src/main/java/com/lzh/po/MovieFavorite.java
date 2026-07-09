@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("user_movie_favorite")
-public class UserMovieFavorite {
+@TableName("movie_favorite")
+public class MovieFavorite {
 
     @TableId(type = IdType.AUTO)
     private Long id;

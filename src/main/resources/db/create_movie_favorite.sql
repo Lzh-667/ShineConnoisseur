@@ -1,5 +1,5 @@
 use shineconnoisseur;
-CREATE TABLE user_movie_favorite (
+CREATE TABLE movie_favorite (
                                      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
                                      user_id BIGINT NOT NULL COMMENT '用户ID',
                                      movie_id BIGINT NOT NULL COMMENT '电影ID',
