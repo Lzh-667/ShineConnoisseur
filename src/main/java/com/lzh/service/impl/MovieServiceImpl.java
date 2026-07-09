@@ -1,16 +1,22 @@
 package com.lzh.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.mapper.MovieMapper;
 import com.lzh.po.Movie;
 import com.lzh.service.IMovieService;
+import com.lzh.utils.SystemConstants;
+import com.lzh.vo.MovieSimpleVO;
 import com.lzh.vo.MovieVO;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
 @Service
 public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements IMovieService {
@@ -39,11 +45,29 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
     @Override
     public Result listMovies(Long current, String name, String genre, String region) {
-        return null;
+        //1.查询电影列表
+        Page<Movie> page = query()
+                .like(StrUtil.isNotBlank(name),"name", name)
+                .eq(StrUtil.isNotBlank(genre),"genre", genre)
+                .eq(StrUtil.isNotBlank(region),"region", region)
+                .orderByDesc("release_date")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+
+        //包装为movieSimpleVO
+        List<MovieSimpleVO> records = page.getRecords().stream()
+                .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
+                .toList();
+
+        //封装为PageResult并返回
+        PageResult<MovieSimpleVO> result = new PageResult<>();
+        result.setTotal(page.getTotal());
+        result.setRecords(records);
+
+        return Result.ok(result);
     }
 
     @Override
     public Result listHotMovies(Long current) {
-        return null;
+        return Result.ok();
     }
 }
