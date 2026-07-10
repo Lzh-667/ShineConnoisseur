@@ -23,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -86,7 +88,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<ReviewComment> rcList = page.getRecords();
         if(rcList.isEmpty()){
-            return Result.ok(Collections.emptyList());
+            PageResult<ReviewCommentVO> result = new PageResult<>();
+            result.setTotal(0L);
+            result.setRecords(Collections.emptyList());
+            return Result.ok(result);
         }
         //3.获取评论id
         Set<Long> reviewCommentIds = rcList.stream()
@@ -101,7 +106,17 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 .stream()
                 .map(LikeRecord::getTargetId)
                 .collect(Collectors.toSet());
-        //5.包装为VO
+        //5.查询用户
+        Set<Long> userIds = rcList.stream()
+                .map(ReviewComment::getUserId)
+                .collect(Collectors.toSet());
+        List<User> users = userService.listByIds(userIds);
+        Map<Long,User> userMap = users.stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        Function.identity()
+                ));
+        //7.包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
                 rc -> {
@@ -109,12 +124,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     BeanUtils.copyProperties(rc, rcVO);
 
                     UserDTO authorDTO = new UserDTO();
-                    BeanUtils.copyProperties(userService.getById(rc.getUserId()), authorDTO);
+                    BeanUtils.copyProperties(userMap.get(rc.getUserId()), authorDTO);
                     rcVO.setAuthor(authorDTO);
 
-                    UserDTO replyUserDTO = new UserDTO();
-                    BeanUtils.copyProperties(userService.getById(rc.getReplyUserId()), replyUserDTO);
-                    rcVO.setReplyUser(replyUserDTO);
+                    rcVO.setReplyUser(null);
 
                     rcVO.setCanEditAndDelete(rc.getUserId().equals(userId));
 
