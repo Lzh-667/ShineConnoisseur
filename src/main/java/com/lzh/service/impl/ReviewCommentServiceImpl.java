@@ -50,4 +50,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         }
         return Result.ok();
     }
+
+    @Override
+    public Result listReviewComment(Long rootId, Integer current) {
+        return null;
+    }
 }

@@ -7,4 +7,6 @@ import com.lzh.po.ReviewComment;
 
 public interface IReviewCommentService extends IService<ReviewComment> {
     Result publishReviewComment(ReviewCommentDTO reviewCommentDTO, Long reviewId);
+
+    Result listReviewComment(Long rootId, Integer current);
 }
