@@ -40,7 +40,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             return Result.fail("添加失败");
         }
         if(reviewCommentDTO.getRootId()==0){
+            /*设置一次评论根评论id为自身，回复用户id为0*/
             reviewComment.setRootId(reviewComment.getId());
+            reviewComment.setReplyUserId(0L);
             isSuccess = updateById(reviewComment);
             if(!isSuccess){
                 return Result.fail("添加失败");
