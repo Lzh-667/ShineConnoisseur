@@ -7,7 +7,7 @@ CREATE TABLE review_comment (
 
                                 root_id BIGINT DEFAULT 0 COMMENT '一级评论ID，0表示一级评论',
 
-                                reply_user_id BIGINT DEFAULT NULL COMMENT '被回复用户ID',
+                                reply_user_id BIGINT DEFAULT 0 COMMENT '被回复用户ID',
 
                                 content VARCHAR(1000) NOT NULL COMMENT '评论内容',
 
