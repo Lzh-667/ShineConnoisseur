@@ -22,11 +22,19 @@ public class ReviewCommentController {
         return reviewCommentService.publishReviewComment(reviewCommentDTO,reviewId);
     }
 
-    @GetMapping("/list/{rootId}")
-    public Result listReviewComment(
+    @GetMapping("/list/root/{reviewId}")
+    public Result listRootReviewComment(
+            @PathVariable("reviewId") Long reviewId,
+            @RequestParam(value = "current", defaultValue = "1") Integer current
+    ){
+        return reviewCommentService.listRootReviewComment(reviewId,current);
+    }
+
+    @GetMapping("/list/children/{rootId}")
+    public Result listChildReviewComment(
             @PathVariable("rootId") Long rootId,
             @RequestParam(value = "current", defaultValue = "1") Integer current
     ){
-        return reviewCommentService.listReviewComment(rootId,current);
+        return reviewCommentService.listChildReviewComment(rootId,current);
     }
 }

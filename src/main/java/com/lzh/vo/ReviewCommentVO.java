@@ -32,9 +32,6 @@ public class ReviewCommentVO {
     /** 点赞数 */
     private Integer likeCount=0;
 
-    /** 回复数量 */
-    private Integer replyCount=0;
-
     /** 创建时间 */
     private LocalDateTime createTime;
 

@@ -1,18 +1,39 @@
 package com.lzh.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.dto.ReviewCommentDTO;
+import com.lzh.dto.UserDTO;
 import com.lzh.mapper.ReviewCommentMapper;
+import com.lzh.po.LikeRecord;
 import com.lzh.po.ReviewComment;
+import com.lzh.po.User;
+import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IReviewCommentService;
+import com.lzh.service.IUserService;
+import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
+import com.lzh.vo.ReviewCommentVO;
+import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, ReviewComment> implements IReviewCommentService {
+
+    @Resource
+    private ILikeRecordService likeRecordService;
+
+    @Resource
+    private IUserService userService;
 
     @Transactional
     @Override
@@ -52,7 +73,68 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     }
 
     @Override
-    public Result listReviewComment(Long rootId, Integer current) {
+    public Result listRootReviewComment(Long reviewId, Integer current) {
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.查询一级评论
+        Page<ReviewComment> page = query()
+                .eq("review_id",reviewId)
+                .eq("reply_user_id",0)
+                .eq("status",1)
+                .orderByDesc("like_count")
+                .orderByDesc("create_time")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+        List<ReviewComment> rcList = page.getRecords();
+        if(rcList.isEmpty()){
+            return Result.ok(Collections.emptyList());
+        }
+        //获取评论id
+        Set<Long> reviewCommentIds = rcList.stream()
+                .map(ReviewComment::getId)
+                .collect(Collectors.toSet());
+        //查询用户点赞过的评论
+        Set<Long> likeReviewCommentIds = likeRecordService.query()
+                .eq("user_id",userId)
+                .eq("target_type",SystemConstants.TARGET_COMMENT)
+                .in("target_id",reviewCommentIds)
+                .list()
+                .stream()
+                .map(LikeRecord::getTargetId)
+                .collect(Collectors.toSet());
+        //3.包装为VO
+        List<ReviewCommentVO> rcListVO = rcList.stream()
+                .map(
+                rc -> {
+                    ReviewCommentVO rcVO = new ReviewCommentVO();
+                    BeanUtils.copyProperties(rc, rcVO);
+
+                    Long authorId = rc.getUserId();
+                    UserDTO authorDTO = new UserDTO();
+                    BeanUtils.copyProperties(userService.getById(authorId), authorDTO);
+                    rcVO.setAuthor(authorDTO);
+
+                    Long replyUserId = rc.getReplyUserId();
+                    UserDTO replyUserDTO = new UserDTO();
+                    BeanUtils.copyProperties(userService.getById(replyUserId), replyUserDTO);
+                    rcVO.setReplyUser(replyUserDTO);
+
+                    rcVO.setCanEditAndDelete(rc.getUserId().equals(userId));
+
+                    rcVO.setIsLike(
+                            likeReviewCommentIds.contains(rc.getId())
+                    );
+
+                    return rcVO;
+                }).toList();
+        //4.封装并返回
+        PageResult<ReviewCommentVO> result = new PageResult<>();
+        result.setTotal(page.getTotal());
+        result.setRecords(rcListVO);
+        return Result.ok(result);
+    }
+
+    @Override
+    public Result listChildReviewComment(Long rootId, Integer current) {
         return null;
     }
 }
