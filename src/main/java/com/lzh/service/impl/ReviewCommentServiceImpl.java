@@ -33,7 +33,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             }
             reviewComment.setReplyUserId(parentComment.getUserId());
         }
-        //3.保存到数据库
+        //4.保存到数据库
         boolean isSuccess = save(reviewComment);
         if(!isSuccess) {
             return Result.fail("添加失败");
