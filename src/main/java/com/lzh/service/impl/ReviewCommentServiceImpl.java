@@ -134,7 +134,6 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 .eq("root_id",rootId)
                 .ne("reply_user_id",0)
                 .eq("status",1)
-                .orderByDesc("like_count")
                 .orderByDesc("create_time")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<ReviewComment> rcList = page.getRecords();
@@ -160,8 +159,8 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                             rcVO.setAuthor(authorDTO);
 
                             UserDTO replyUserDTO = new UserDTO();
-                            BeanUtils.copyProperties(replyUserMap.get(rc.getUserId()), replyUserDTO);
-                            rcVO.setAuthor(replyUserDTO);
+                            BeanUtils.copyProperties(replyUserMap.get(rc.getReplyUserId()), replyUserDTO);
+                            rcVO.setReplyUser(replyUserDTO);
 
                             rcVO.setCanEditAndDelete(rc.getUserId().equals(userId));
 
@@ -181,6 +180,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     private Map<Long, User> getReplyUserMap(List<ReviewComment> rcList) {
         Set<Long> replyUserIds = rcList.stream()
                 .map(ReviewComment::getReplyUserId)
+                .filter(id -> id != 0)
                 .collect(Collectors.toSet());
         List<User> replyUsers = userService.listByIds(replyUserIds);
         return replyUsers.stream()
