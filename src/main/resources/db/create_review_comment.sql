@@ -5,7 +5,7 @@ CREATE TABLE review_comment (
                                 user_id BIGINT NOT NULL COMMENT '用户ID',
                                 review_id BIGINT NOT NULL COMMENT '影评ID',
 
-                                parent_id BIGINT DEFAULT 0 COMMENT '父级评论ID，0表示一级评论',
+                                root_id BIGINT DEFAULT 0 COMMENT '一级评论ID，0表示一级评论',
 
                                 reply_user_id BIGINT DEFAULT NULL COMMENT '被回复用户ID',
 
@@ -20,8 +20,8 @@ CREATE TABLE review_comment (
                                 update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
                                 INDEX idx_review_id (review_id),
-                                INDEX idx_parent_id (parent_id),
+                                INDEX idx_parent_id (root_id),
                                 INDEX idx_user_id (user_id),
 
-                                INDEX idx_review_parent (review_id, parent_id)
+                                INDEX idx_review_parent (review_id, root_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='影评评论表';

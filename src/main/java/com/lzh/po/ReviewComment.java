@@ -23,9 +23,9 @@ public class ReviewComment {
     @TableField("review_id")
     private Long reviewId;
 
-    /** 父级评论 0表示不存在父级评论*/
-    @TableField("parent_id")
-    private Long parentId;
+    /** 一次评论 0表示不存在一级评论*/
+    @TableField("root_id")
+    private Long rootId;
 
     /** 被回复用户*/
     @TableField("reply_user_id")

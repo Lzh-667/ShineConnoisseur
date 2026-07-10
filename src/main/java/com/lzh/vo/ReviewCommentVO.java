@@ -11,10 +11,10 @@ public class ReviewCommentVO {
     /** 用户ID */
     private Long userId;
 
-    /** 父级评论 0表示不存在父级评论*/
-    private Long parentId;
+    /** 一级评论 0表示不存在一级评论*/
+    private Long rootId;
 
-    /** 被回复用户 0表示不存在父级评论*/
+    /** 被回复用户 0表示不存在一级评论*/
     private Long replyUserId;
 
     /** 昵称 */
