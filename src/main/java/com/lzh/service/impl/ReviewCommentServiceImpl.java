@@ -24,15 +24,25 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         BeanUtils.copyProperties(reviewCommentDTO,reviewComment);
         reviewComment.setUserId(userId);
         reviewComment.setReviewId(reviewId);
-        //3.保存到数据库
-        boolean isSuccess1 = save(reviewComment);
-        if(!isSuccess1) {
+        //3.如果是回复需要校验rootId
+        if(reviewComment.getRootId()!=null && reviewComment.getRootId()!=0){
+            ReviewComment rootComment = getById(reviewComment.getRootId());
+            if(rootComment == null){
+                return Result.fail("评论不存在");
+            }
+            if(!rootComment.getReviewId().equals(reviewId)){
+                return Result.fail("非法评论");
+            }
+        }
+        //4.保存到数据库
+        boolean isSuccess = save(reviewComment);
+        if(!isSuccess) {
             return Result.fail("添加失败");
         }
         if(reviewCommentDTO.getRootId()==0){
             reviewComment.setRootId(reviewComment.getId());
-            boolean isSuccess2 = updateById(reviewComment);
-            if(!isSuccess2){
+            isSuccess = updateById(reviewComment);
+            if(!isSuccess){
                 return Result.fail("添加失败");
             }
         }
