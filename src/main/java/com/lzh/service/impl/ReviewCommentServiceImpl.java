@@ -94,28 +94,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             return Result.ok(result);
         }
         //3.获取评论id
-        Set<Long> reviewCommentIds = rcList.stream()
-                .map(ReviewComment::getId)
-                .collect(Collectors.toSet());
-        //4.查询用户点赞过的评论
-        Set<Long> likeReviewCommentIds = likeRecordService.query()
-                .eq("user_id",userId)
-                .eq("target_type",SystemConstants.TARGET_COMMENT)
-                .in("target_id",reviewCommentIds)
-                .list()
-                .stream()
-                .map(LikeRecord::getTargetId)
-                .collect(Collectors.toSet());
+        Set<Long> likeReviewCommentIds = getLongs(rcList, userId);
         //5.查询用户
-        Set<Long> userIds = rcList.stream()
-                .map(ReviewComment::getUserId)
-                .collect(Collectors.toSet());
-        List<User> users = userService.listByIds(userIds);
-        Map<Long,User> userMap = users.stream()
-                .collect(Collectors.toMap(
-                        User::getId,
-                        Function.identity()
-                ));
+        Map<Long, User> userMap = getUserMap(rcList);
         //6.包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
@@ -146,6 +127,94 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Override
     public Result listChildReviewComment(Long rootId, Integer current) {
-        return null;
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.查询子评论
+        Page<ReviewComment> page = query()
+                .eq("root_id",rootId)
+                .ne("reply_user_id",0)
+                .eq("status",1)
+                .orderByDesc("like_count")
+                .orderByDesc("create_time")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+        List<ReviewComment> rcList = page.getRecords();
+        if(rcList.isEmpty()){
+            PageResult<ReviewCommentVO> result = new PageResult<>();
+            result.setTotal(0L);
+            result.setRecords(Collections.emptyList());
+            return Result.ok(result);
+        }
+        Set<Long> likeReviewCommentIds = getLongs(rcList, userId);
+        //5.查询用户
+        Map<Long, User> userMap = getUserMap(rcList);
+        Map<Long, User> replyUserMap = getReplyUserMap(rcList);
+        //6.包装为VO
+        List<ReviewCommentVO> rcListVO = rcList.stream()
+                .map(
+                        rc -> {
+                            ReviewCommentVO rcVO = new ReviewCommentVO();
+                            BeanUtils.copyProperties(rc, rcVO);
+
+                            UserDTO authorDTO = new UserDTO();
+                            BeanUtils.copyProperties(userMap.get(rc.getUserId()), authorDTO);
+                            rcVO.setAuthor(authorDTO);
+
+                            UserDTO replyUserDTO = new UserDTO();
+                            BeanUtils.copyProperties(replyUserMap.get(rc.getUserId()), replyUserDTO);
+                            rcVO.setAuthor(replyUserDTO);
+
+                            rcVO.setCanEditAndDelete(rc.getUserId().equals(userId));
+
+                            rcVO.setIsLike(
+                                    likeReviewCommentIds.contains(rc.getId())
+                            );
+                            return rcVO;
+                        }
+                ).toList();
+        //7.封装并返回
+        PageResult<ReviewCommentVO> result = new PageResult<>();
+        result.setTotal(page.getTotal());
+        result.setRecords(rcListVO);
+        return Result.ok(result);
+    }
+
+    private Map<Long, User> getReplyUserMap(List<ReviewComment> rcList) {
+        Set<Long> replyUserIds = rcList.stream()
+                .map(ReviewComment::getReplyUserId)
+                .collect(Collectors.toSet());
+        List<User> replyUsers = userService.listByIds(replyUserIds);
+        return replyUsers.stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        Function.identity()
+                ));
+    }
+
+    private Map<Long, User> getUserMap(List<ReviewComment> rcList) {
+        Set<Long> userIds = rcList.stream()
+                .map(ReviewComment::getUserId)
+                .collect(Collectors.toSet());
+        List<User> users = userService.listByIds(userIds);
+        return users.stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        Function.identity()
+                ));
+    }
+
+    private Set<Long> getLongs(List<ReviewComment> rcList, Long userId) {
+        //3.获取评论id
+        Set<Long> reviewCommentIds = rcList.stream()
+                .map(ReviewComment::getId)
+                .collect(Collectors.toSet());
+        //4.查询用户点赞过的评论
+        return likeRecordService.query()
+                .eq("user_id", userId)
+                .eq("target_type",SystemConstants.TARGET_COMMENT)
+                .in("target_id",reviewCommentIds)
+                .list()
+                .stream()
+                .map(LikeRecord::getTargetId)
+                .collect(Collectors.toSet());
     }
 }
