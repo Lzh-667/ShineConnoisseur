@@ -23,7 +23,7 @@ public class ReviewComment {
     @TableField("review_id")
     private Long reviewId;
 
-    /** 一次评论 0表示不存在一级评论*/
+    /** 一级评论 */
     @TableField("root_id")
     private Long rootId;
 

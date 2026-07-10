@@ -1,6 +1,9 @@
 package com.lzh.vo;
 
+import com.lzh.dto.UserDTO;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Data
 public class ReviewCommentVO {
@@ -8,20 +11,14 @@ public class ReviewCommentVO {
     /** 评论ID */
     private Long id;
 
-    /** 用户ID */
-    private Long userId;
+    /** 作者信息 */
+    private UserDTO author;
 
-    /** 一级评论 0表示不存在一级评论*/
+    /** 被回复的人信息 */
+    private UserDTO replyUser;
+
+    /** 一级评论 */
     private Long rootId;
-
-    /** 被回复用户 0表示不存在一级评论*/
-    private Long replyUserId;
-
-    /** 昵称 */
-    private String nickName;
-
-    /** 作者头像 */
-    private String avatar;
 
     /** 评论内容 */
     private String content;
@@ -37,5 +34,8 @@ public class ReviewCommentVO {
 
     /** 回复数量 */
     private Integer replyCount=0;
+
+    /** 创建时间 */
+    private LocalDateTime createTime;
 
 }

@@ -9,10 +9,12 @@ import com.lzh.service.IReviewCommentService;
 import com.lzh.utils.UserHolder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, ReviewComment> implements IReviewCommentService {
 
+    @Transactional
     @Override
     public Result publishReviewComment(ReviewCommentDTO reviewCommentDTO, Long reviewId) {
         //1.获取当前用户
@@ -23,9 +25,16 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         reviewComment.setUserId(userId);
         reviewComment.setReviewId(reviewId);
         //3.保存到数据库
-        boolean isSuccess = save(reviewComment);
-        if(!isSuccess) {
+        boolean isSuccess1 = save(reviewComment);
+        if(!isSuccess1) {
             return Result.fail("添加失败");
+        }
+        if(reviewCommentDTO.getRootId()==0){
+            reviewComment.setRootId(reviewComment.getId());
+            boolean isSuccess2 = updateById(reviewComment);
+            if(!isSuccess2){
+                return Result.fail("添加失败");
+            }
         }
         return Result.ok();
     }
