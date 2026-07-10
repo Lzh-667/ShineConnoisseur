@@ -88,11 +88,11 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         if(rcList.isEmpty()){
             return Result.ok(Collections.emptyList());
         }
-        //获取评论id
+        //3.获取评论id
         Set<Long> reviewCommentIds = rcList.stream()
                 .map(ReviewComment::getId)
                 .collect(Collectors.toSet());
-        //查询用户点赞过的评论
+        //4.查询用户点赞过的评论
         Set<Long> likeReviewCommentIds = likeRecordService.query()
                 .eq("user_id",userId)
                 .eq("target_type",SystemConstants.TARGET_COMMENT)
@@ -101,21 +101,19 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 .stream()
                 .map(LikeRecord::getTargetId)
                 .collect(Collectors.toSet());
-        //3.包装为VO
+        //5.包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
                 rc -> {
                     ReviewCommentVO rcVO = new ReviewCommentVO();
                     BeanUtils.copyProperties(rc, rcVO);
 
-                    Long authorId = rc.getUserId();
                     UserDTO authorDTO = new UserDTO();
-                    BeanUtils.copyProperties(userService.getById(authorId), authorDTO);
+                    BeanUtils.copyProperties(userService.getById(rc.getUserId()), authorDTO);
                     rcVO.setAuthor(authorDTO);
 
-                    Long replyUserId = rc.getReplyUserId();
                     UserDTO replyUserDTO = new UserDTO();
-                    BeanUtils.copyProperties(userService.getById(replyUserId), replyUserDTO);
+                    BeanUtils.copyProperties(userService.getById(rc.getReplyUserId()), replyUserDTO);
                     rcVO.setReplyUser(replyUserDTO);
 
                     rcVO.setCanEditAndDelete(rc.getUserId().equals(userId));
@@ -126,7 +124,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
                     return rcVO;
                 }).toList();
-        //4.封装并返回
+        //6.封装并返回
         PageResult<ReviewCommentVO> result = new PageResult<>();
         result.setTotal(page.getTotal());
         result.setRecords(rcListVO);
