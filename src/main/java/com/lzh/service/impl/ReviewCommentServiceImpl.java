@@ -116,7 +116,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                         User::getId,
                         Function.identity()
                 ));
-        //7.包装为VO
+        //6.包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
                 rc -> {
@@ -137,7 +137,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
                     return rcVO;
                 }).toList();
-        //6.封装并返回
+        //7.封装并返回
         PageResult<ReviewCommentVO> result = new PageResult<>();
         result.setTotal(page.getTotal());
         result.setRecords(rcListVO);
