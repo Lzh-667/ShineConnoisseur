@@ -20,8 +20,9 @@ CREATE TABLE review_comment (
                                 update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
                                 INDEX idx_review_id (review_id),
-                                INDEX idx_parent_id (root_id),
+                                INDEX idx_root_id (root_id),
                                 INDEX idx_user_id (user_id),
 
-                                INDEX idx_review_parent (review_id, root_id)
+                                INDEX idx_review_root (review_id, root_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='影评评论表';
+drop table review_comment;
