@@ -14,10 +14,10 @@ public class ReviewCommentController {
 
     @Resource
     private IReviewCommentService reviewCommentService;
-    @PostMapping("/publish/{review}")
+    @PostMapping("/publish/{reviewId}")
     public Result publishReviewComment(
             @RequestBody ReviewCommentDTO reviewCommentDTO,
-            @PathVariable("review") Long reviewId
+            @PathVariable("reviewId") Long reviewId
     ){
         return reviewCommentService.publishReviewComment(reviewCommentDTO,reviewId);
     }
