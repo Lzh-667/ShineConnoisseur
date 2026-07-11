@@ -232,7 +232,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             }
             LikeVO likeVO = new LikeVO();
             likeVO.setLike(false);
-            likeVO.setLikeCount(query().eq("id", reviewId).count());
+            likeVO.setLikeCount(getById(reviewId).getLikeCount());
             return Result.ok(likeVO);
         }
         else{
@@ -270,7 +270,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             }
             LikeVO likeVO = new LikeVO();
             likeVO.setLike(true);
-            likeVO.setLikeCount(query().eq("id", reviewId).count());
+            likeVO.setLikeCount(getById(reviewId).getLikeCount());
             return Result.ok(likeVO);
         }
     }

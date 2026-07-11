@@ -226,7 +226,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             }
             LikeVO likeVO = new LikeVO();
             likeVO.setLike(false);
-            likeVO.setLikeCount(query().eq("id", reviewCommentId).count());
+            likeVO.setLikeCount(getById(reviewCommentId).getLikeCount());
             return Result.ok(likeVO);
         }else{
             //3.2.点赞
@@ -262,7 +262,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             }
             LikeVO likeVO = new LikeVO();
             likeVO.setLike(true);
-            likeVO.setLikeCount(query().eq("id", reviewCommentId).count());
+            likeVO.setLikeCount(getById(reviewCommentId).getLikeCount());
             return Result.ok(likeVO);
         }
     }

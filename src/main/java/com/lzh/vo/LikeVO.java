@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class LikeVO {
     private boolean like;
-    private Long likeCount;
+    private Integer likeCount;
 }
