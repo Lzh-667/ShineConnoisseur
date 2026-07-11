@@ -9,6 +9,7 @@ import com.lzh.dto.ReviewCommentDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.po.LikeRecord;
+import com.lzh.po.Review;
 import com.lzh.po.ReviewComment;
 import com.lzh.po.User;
 import com.lzh.service.ILikeRecordService;
@@ -268,13 +269,34 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     }
 
     @Override
-    public Result updateReviewComment(Long reviewCommentId, ReviewCommentDTO reviewCommentDTO) {
-        return null;
-    }
-
-    @Override
     public Result deleteReviewComment(Long reviewCommentId) {
-        return null;
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.确认权限
+        ReviewComment comment = getById(reviewCommentId);
+        if(comment==null){
+            return Result.fail("评论不存在");
+        }
+        if (!comment.getUserId().equals(userId)) {
+            return Result.fail("没有删除权限");
+        }
+        //3.修改数据
+        boolean isSuccess = removeById(reviewCommentId);
+        if(isSuccess){
+            //删除点赞数据和缓存
+            likeRecordService.remove(
+                    new QueryWrapper<LikeRecord>()
+                            .eq("target_id", reviewCommentId)
+                            .eq("target_type", SystemConstants.TARGET_COMMENT)
+            );
+            stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
+            log.info("删除成功");
+            return Result.ok();
+        }
+        else{
+            log.info("删除失败");
+            return Result.fail("删除失败");
+        }
     }
 
     private boolean isLike(Long commentId, Long userId) {

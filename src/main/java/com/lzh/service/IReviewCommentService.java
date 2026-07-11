@@ -14,7 +14,5 @@ public interface IReviewCommentService extends IService<ReviewComment> {
 
     Result likeReviewComment(Long reviewCommentId);
 
-    Result updateReviewComment(Long reviewCommentId, ReviewCommentDTO reviewCommentDTO);
-
     Result deleteReviewComment(Long reviewCommentId);
 }

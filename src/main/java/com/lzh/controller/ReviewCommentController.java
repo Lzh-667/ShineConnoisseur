@@ -44,14 +44,6 @@ public class ReviewCommentController {
         return reviewCommentService.likeReviewComment(reviewCommentId);
     }
 
-    @PutMapping("/{reviewCommentId}")
-    public Result updateReview(
-            @PathVariable("reviewCommentId") Long reviewCommentId,
-            @RequestBody ReviewCommentDTO reviewCommentDTO
-    ){
-        return reviewCommentService.updateReviewComment(reviewCommentId,reviewCommentDTO);
-    }
-
     @DeleteMapping("/{reviewCommentId}")
     public Result deleteReview(@PathVariable("reviewCommentId") Long reviewCommentId){
         return reviewCommentService.deleteReviewComment(reviewCommentId);
