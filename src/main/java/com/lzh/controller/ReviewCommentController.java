@@ -2,7 +2,6 @@ package com.lzh.controller;
 
 import com.lzh.common.Result;
 import com.lzh.dto.ReviewCommentDTO;
-import com.lzh.dto.ReviewDTO;
 import com.lzh.service.IReviewCommentService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
