@@ -236,7 +236,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new RuntimeException("点赞失败");
                 }
                 log.info("点赞成功");
-                stringRedisTemplate.opsForSet().add(commentKey, userId.toString(), userId.toString());
+                stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
             }
             else{
                 log.info("点赞失败");
