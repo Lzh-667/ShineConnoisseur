@@ -28,11 +28,11 @@ public class RedisConstants {
     /**关注*/
     public static final String FOLLOWING_KEY = "followings:";
     public static final Long FOLLOWING_TTL = 60L;
-    public static final Long FOLLOWING_EMPTY_TTL = 60L;
+    public static final Long FOLLOWING_EMPTY_TTL = 20L;
     /**粉丝*/
     public static final String FOLLOWER_KEY = "followers:";
     public static final Long FOLLOWER_TTL = 60L;
-    public static final Long FOLLOWER_EMPTY_TTL = 60L;
+    public static final Long FOLLOWER_EMPTY_TTL = 20L;
     /**影评*/
     public static final String LIKE_REVIEW_KEY = "review:like:";
     /**电影*/
@@ -42,5 +42,5 @@ public class RedisConstants {
     public static final String MOVIE_FAVORITE_KEY = "movie:favorite:";
     /** 评论 */
     public static final String LIKE_COMMENT_KEY = "comment:like:";
-    public static final Long LIKE_COMMENT_EMPTY_TTL = 60L;
+    public static final Long LIKE_COMMENT_EMPTY_TTL = 20L;
 }

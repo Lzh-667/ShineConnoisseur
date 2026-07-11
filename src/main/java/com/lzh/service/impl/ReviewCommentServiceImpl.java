@@ -26,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -188,7 +187,11 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     public Result likeReviewComment(Long reviewCommentId) {
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.判断是否已点赞
+        //2.防止点赞不存在的评论
+        if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId))){
+            return Result.fail("点赞的影评不存在");
+        }
+        //3.判断是否已点赞
         boolean Liked = isLike(reviewCommentId, userId);
         String commentKey = RedisConstants.LIKE_COMMENT_KEY + reviewCommentId;
         if(Liked){
@@ -222,10 +225,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             }
         }else{
             //3.2.点赞
-            //防止点赞不存在的评论
-            if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId))){
-                return Result.fail("点赞的影评不存在");
-            }
+
             //防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
@@ -282,10 +282,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
             stringRedisTemplate.opsForSet().add(commentKey, values);
         }
-        else{
-            stringRedisTemplate.opsForSet().add(commentKey, "empty");
-            stringRedisTemplate.expire(commentKey, RedisConstants.LIKE_COMMENT_EMPTY_TTL, TimeUnit.MINUTES);
-        }
+//        else{
+//            stringRedisTemplate.opsForSet().add(commentKey, "empty");
+//            stringRedisTemplate.expire(commentKey, RedisConstants.LIKE_COMMENT_EMPTY_TTL, TimeUnit.MINUTES);
+//        }
 
         return (ids.contains(userId));
     }
