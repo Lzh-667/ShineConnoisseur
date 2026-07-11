@@ -2,6 +2,7 @@ package com.lzh.controller;
 
 import com.lzh.common.Result;
 import com.lzh.dto.ReviewCommentDTO;
+import com.lzh.dto.ReviewDTO;
 import com.lzh.service.IReviewCommentService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -41,5 +42,18 @@ public class ReviewCommentController {
     @PostMapping("/like/{reviewCommentId}")
     public Result likeReviewComment(@PathVariable("reviewCommentId") Long reviewCommentId){
         return reviewCommentService.likeReviewComment(reviewCommentId);
+    }
+
+    @PutMapping("/{reviewCommentId}")
+    public Result updateReview(
+            @PathVariable("reviewCommentId") Long reviewCommentId,
+            @RequestBody ReviewCommentDTO reviewCommentDTO
+    ){
+        return reviewCommentService.updateReviewComment(reviewCommentId,reviewCommentDTO);
+    }
+
+    @DeleteMapping("/{reviewCommentId}")
+    public Result deleteReview(@PathVariable("reviewCommentId") Long reviewCommentId){
+        return reviewCommentService.deleteReviewComment(reviewCommentId);
     }
 }

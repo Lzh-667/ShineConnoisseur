@@ -267,6 +267,16 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         }
     }
 
+    @Override
+    public Result updateReviewComment(Long reviewCommentId, ReviewCommentDTO reviewCommentDTO) {
+        return null;
+    }
+
+    @Override
+    public Result deleteReviewComment(Long reviewCommentId) {
+        return null;
+    }
+
     private boolean isLike(Long commentId, Long userId) {
         //2.查redis
         String commentKey = RedisConstants.LIKE_COMMENT_KEY + commentId;
