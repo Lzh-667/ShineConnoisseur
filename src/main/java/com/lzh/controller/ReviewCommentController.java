@@ -37,4 +37,9 @@ public class ReviewCommentController {
     ){
         return reviewCommentService.listChildReviewComment(rootId,current);
     }
+
+    @PostMapping("/like/{reviewCommentId}")
+    public Result likeReviewComment(@PathVariable("reviewCommentId") Long reviewCommentId){
+        return reviewCommentService.likeReviewComment(reviewCommentId);
+    }
 }

@@ -1,5 +1,6 @@
 package com.lzh.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.PageResult;
@@ -13,11 +14,14 @@ import com.lzh.po.User;
 import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IReviewCommentService;
 import com.lzh.service.IUserService;
+import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import com.lzh.vo.ReviewCommentVO;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +33,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, ReviewComment> implements IReviewCommentService {
 
     @Resource
@@ -36,6 +41,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Resource
     private IUserService userService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Transactional
     @Override
@@ -175,6 +183,91 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         result.setTotal(page.getTotal());
         result.setRecords(rcListVO);
         return Result.ok(result);
+    }
+
+    @Override
+    public Result likeReviewComment(Long reviewCommentId) {
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.判断是否已点赞
+        boolean Liked = isLike(reviewCommentId, userId);
+        String commentKey = RedisConstants.LIKE_COMMENT_KEY + reviewCommentId;
+        if(Liked){
+            //3.1.取消点赞
+            //删除数据
+            boolean isSuccess = likeRecordService.remove(new QueryWrapper<LikeRecord>()
+                            .eq("target_id", reviewCommentId)
+                            .eq("target_type", SystemConstants.TARGET_COMMENT)
+                            .eq("user_id", userId)
+            );
+            //更新关联数据
+            if(isSuccess){
+                boolean success = update().setSql("like_count=like_count-1")
+                        .eq("id", reviewCommentId)
+                        .gt("like_count", 0)
+                        .update();
+                if(!success){
+                    throw new RuntimeException("取消点赞失败");
+                }
+                log.info("取消点赞成功");
+                //移除缓存
+                stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
+            }
+            else{
+                log.info("取消点赞失败");
+                return Result.fail("取消点赞失败");
+            }
+        }else{
+            //3.2.点赞
+            //新增数据
+            LikeRecord likeRecord = new LikeRecord();
+            likeRecord.setUserId(userId);
+            likeRecord.setTargetId(reviewCommentId);
+            likeRecord.setTargetType(SystemConstants.TARGET_COMMENT);
+            boolean isSuccess = likeRecordService.save(likeRecord);
+            //更新关联数据
+            if(isSuccess){
+                boolean success = update().setSql("like_count=like_count+1")
+                        .eq("id", reviewCommentId)
+                        .update();
+                if(!success){
+                    throw new RuntimeException("点赞失败");
+                }
+                log.info("点赞成功");
+                stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
+            }
+            else{
+                log.info("点赞失败");
+                return Result.fail("点赞失败");
+            }
+        }
+        return Result.ok();
+    }
+
+    private boolean isLike(Long commentId, Long userId) {
+        //2.查redis
+        String commentKey = RedisConstants.LIKE_COMMENT_KEY + commentId;
+        Boolean exists = stringRedisTemplate.hasKey(commentKey);
+        if (exists) {
+            Boolean isLike = stringRedisTemplate.opsForSet()
+                    .isMember(commentKey, userId.toString());
+            return(Boolean.TRUE.equals(isLike));
+        }
+        //3.redis不存在，查数据库重建缓存
+        List<Long> ids = likeRecordService.query()
+                .eq("target_id", commentId)
+                .eq("target_type", SystemConstants.TARGET_COMMENT)
+                .list()
+                .stream()
+                .map(LikeRecord::getUserId)
+                .toList();
+
+        if (!ids.isEmpty()) {
+            String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
+            stringRedisTemplate.opsForSet().add(commentKey, values);
+        }
+
+        return (ids.contains(userId));
     }
 
     private Map<Long, User> getReplyUserMap(List<ReviewComment> rcList) {

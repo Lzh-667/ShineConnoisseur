@@ -40,5 +40,6 @@ public class RedisConstants {
     public static final Long MOVIE_INFO_TTL = 25L;
     public static final String HOT_MOVIE_KEY = "movie:hot:";
     public static final String MOVIE_FAVORITE_KEY = "movie:favorite:";
-
+    /** 评论 */
+    public static final String LIKE_COMMENT_KEY = "comment:like:";
 }
