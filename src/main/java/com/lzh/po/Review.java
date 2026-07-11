@@ -40,6 +40,7 @@ public class Review {
     private Integer likeCount=0;
 
     /** 状态：0-删除，1-正常，2-审核中 */
+    @TableLogic(value = "1", delval = "0")
     private Integer status;
 
     /** 创建时间 */
