@@ -225,7 +225,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 return Result.fail("取消点赞失败");
             }
             LikeVO likeVO = new LikeVO();
-            likeVO.setLike(true);
+            likeVO.setLike(false);
             likeVO.setLikeCount(query().eq("id", reviewCommentId).count());
             return Result.ok(likeVO);
         }else{
