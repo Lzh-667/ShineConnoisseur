@@ -12,9 +12,7 @@ public interface IReviewService extends IService<Review> {
 
     Result myReviews(Integer current);
 
-    Result likeReview(Long reviewId,Boolean isLike);
-
-    Result isLike(Long reviewId);
+    Result likeReview(Long reviewId);
 
     Result updateReview(Long reviewId, ReviewDTO reviewDTO);
 

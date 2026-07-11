@@ -34,17 +34,9 @@ public class ReviewController {
         return reviewService.myReviews(current);
     }
 
-    @GetMapping("/or/not/{reviewId}")
-    public Result isLike(@PathVariable("reviewId") Long reviewId){
-        return reviewService.isLike(reviewId);
-    }
-
-    @PostMapping("/like/{reviewId}/{isLike}")
-    public Result likeReview(
-            @PathVariable("reviewId") Long reviewId,
-            @PathVariable("isLike") Boolean isLike
-    ){
-        return reviewService.likeReview(reviewId,isLike);
+    @PostMapping("/like/{reviewId}")
+    public Result likeReview(@PathVariable("reviewId") Long reviewId){
+        return reviewService.likeReview(reviewId);
     }
 
     @PutMapping("/{reviewId}")

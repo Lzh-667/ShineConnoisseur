@@ -225,7 +225,6 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             }
         }else{
             //3.2.点赞
-
             //防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
@@ -282,10 +281,6 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
             stringRedisTemplate.opsForSet().add(commentKey, values);
         }
-//        else{
-//            stringRedisTemplate.opsForSet().add(commentKey, "empty");
-//            stringRedisTemplate.expire(commentKey, RedisConstants.LIKE_COMMENT_EMPTY_TTL, TimeUnit.MINUTES);
-//        }
 
         return (ids.contains(userId));
     }

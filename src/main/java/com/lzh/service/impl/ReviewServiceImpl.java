@@ -196,7 +196,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
     @Transactional
     @Override
-    public Result likeReview(Long reviewId,Boolean isLike) {
+    public Result likeReview(Long reviewId) {
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.防止点赞不存在的影评
@@ -204,7 +204,8 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             return Result.fail("点赞的影评不存在");
         }
         //3.判断是点赞还是取消点赞
-        if (isLike) {
+        boolean Liked = isLike(reviewId, userId);
+        if (Liked) {
             //3.1.取消点赞
             //删除数据
             boolean isSuccess = likeRecordService.remove(new QueryWrapper<LikeRecord>()
@@ -266,10 +267,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         return Result.ok();
     }
 
-    @Override
-    public Result isLike(Long reviewId) {
-        //1.获取当前用户
-        Long userId = UserHolder.getUser().getId();
+    public boolean isLike(Long reviewId,Long userId) {
         //2.查redis
         String reviewKey = RedisConstants.LIKE_REVIEW_KEY + reviewId;
         Boolean exists = stringRedisTemplate.hasKey(reviewKey);
@@ -277,7 +275,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             Boolean isLike = stringRedisTemplate.opsForSet()
                     .isMember(reviewKey, userId.toString());
 
-            return Result.ok(Boolean.TRUE.equals(isLike));
+            return Boolean.TRUE.equals(isLike);
         }
         //3.redis不存在，查数据库重建缓存
         List<Long> ids = likeRecordService.query()
@@ -293,7 +291,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             stringRedisTemplate.opsForSet().add(reviewKey, values);
         }
 
-        return Result.ok(ids.contains(userId));
+        return (ids.contains(userId));
     }
 
     @Transactional
