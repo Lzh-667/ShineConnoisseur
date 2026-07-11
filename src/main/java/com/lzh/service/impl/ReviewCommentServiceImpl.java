@@ -268,6 +268,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         }
     }
 
+    @Transactional
     @Override
     public Result deleteReviewComment(Long reviewCommentId) {
         //1.获取当前用户
