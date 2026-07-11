@@ -48,4 +48,9 @@ public class ReviewCommentController {
     public Result deleteReview(@PathVariable("reviewCommentId") Long reviewCommentId){
         return reviewCommentService.deleteReviewComment(reviewCommentId);
     }
+
+    @GetMapping("/my")
+    public Result myReviewComments(@RequestParam(value = "current", defaultValue = "1") Integer current){
+        return reviewCommentService.myReviewComments(current);
+    }
 }

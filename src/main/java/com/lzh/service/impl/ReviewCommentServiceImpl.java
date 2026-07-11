@@ -20,6 +20,7 @@ import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewCommentVO;
+import com.lzh.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -298,6 +299,60 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             log.info("删除失败");
             return Result.fail("删除失败");
         }
+    }
+
+    @Override
+    public Result myReviewComments(Integer current) {
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.根据用户id查询
+        Page<ReviewComment> page = query()
+                .eq("user_id",userId)
+                .orderByDesc("like_count")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+
+        List<ReviewComment> rcList = page.getRecords();
+        if (rcList.isEmpty()) {
+            PageResult<ReviewComment> result = new PageResult<>();
+            result.setTotal(page.getTotal());
+            result.setRecords(Collections.emptyList());
+            return Result.ok(result);
+        }
+
+        //3.获取影评id
+        Set<Long> reviewIds = reviewList.stream()
+                .map(Review::getId)
+                .collect(Collectors.toSet());
+
+        //4.查询当前用户点赞过的影评
+        Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
+
+        //5.批量查询评论数量
+        Map<Long, Integer> commentCountMap = getCommentCountMap(reviewIds);
+
+        //6.将列表转为VO
+        User user=userService.getById(userId);
+        String userName = user.getUsername();
+        String nickname = user.getNickname();
+        String avatar = user.getAvatar();
+        List<ReviewVO> reviewVOList = reviewList.stream()
+                .map(review -> {
+                    ReviewVO vo = new ReviewVO();
+                    BeanUtils.copyProperties(review, vo);
+                    vo.setUserName(userName);
+                    vo.setNickName(nickname);
+                    vo.setAvatar(avatar);
+                    vo.setIsLike(
+                            likeReviewIds.contains(review.getId())
+                    );
+                    vo.setCommentCount(
+                            commentCountMap.getOrDefault(review.getId(), 0)
+                    );
+                    vo.setCanEditAndDelete(true);
+                    return vo;
+                })
+                .toList();
+        return Result.ok(reviewVOList);
     }
 
     private boolean isLike(Long commentId, Long userId) {
