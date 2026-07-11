@@ -12,6 +12,7 @@ import com.lzh.service.*;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
+import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -229,6 +230,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 log.info("取消点赞失败");
                 return Result.fail("取消点赞失败");
             }
+            LikeVO likeVO = new LikeVO();
+            likeVO.setLike(false);
+            likeVO.setLikeCount(query().eq("id", reviewId).count());
+            return Result.ok(likeVO);
         }
         else{
             //3.2.点赞
@@ -263,8 +268,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 log.info("点赞失败");
                 return Result.fail("点赞失败");
             }
+            LikeVO likeVO = new LikeVO();
+            likeVO.setLike(true);
+            likeVO.setLikeCount(query().eq("id", reviewId).count());
+            return Result.ok(likeVO);
         }
-        return Result.ok();
     }
 
     public boolean isLike(Long reviewId,Long userId) {
