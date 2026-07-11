@@ -25,10 +25,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -185,6 +182,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         return Result.ok(result);
     }
 
+    @Transactional
     @Override
     public Result likeReviewComment(Long reviewCommentId) {
         //1.获取当前用户
@@ -212,6 +210,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 log.info("取消点赞成功");
                 //移除缓存
                 stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
+                Long size = stringRedisTemplate.opsForSet().size(commentKey);
+                if(Objects.equals(size, 0L)){
+                    stringRedisTemplate.delete(commentKey);
+                }
             }
             else{
                 log.info("取消点赞失败");
@@ -234,7 +236,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new RuntimeException("点赞失败");
                 }
                 log.info("点赞成功");
-                stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
+                stringRedisTemplate.opsForSet().add(commentKey, userId.toString(), userId.toString());
             }
             else{
                 log.info("点赞失败");
