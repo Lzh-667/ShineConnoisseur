@@ -42,4 +42,5 @@ public class RedisConstants {
     public static final String MOVIE_FAVORITE_KEY = "movie:favorite:";
     /** 评论 */
     public static final String LIKE_COMMENT_KEY = "comment:like:";
+    public static final Long LIKE_COMMENT_EMPTY_TTL = 60L;
 }
