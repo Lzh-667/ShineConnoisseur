@@ -218,7 +218,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 }
                 log.info("取消点赞成功");
                 //移除缓存
-                stringRedisTemplate.opsForSet().remove(RedisConstants.LIKE_REVIEW_KEY + reviewId, userId);
+                stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + reviewId);
             }
             else{
                 log.info("取消点赞失败");
@@ -256,7 +256,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 }
                 log.info("点赞成功");
                 //移除缓存
-                stringRedisTemplate.opsForSet().remove(RedisConstants.LIKE_REVIEW_KEY + reviewId, userId);
+                stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + reviewId);
             }
             else{
                 log.info("点赞失败");
