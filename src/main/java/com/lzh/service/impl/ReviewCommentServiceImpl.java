@@ -9,7 +9,6 @@ import com.lzh.dto.ReviewCommentDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.po.LikeRecord;
-import com.lzh.po.Review;
 import com.lzh.po.ReviewComment;
 import com.lzh.po.User;
 import com.lzh.service.ILikeRecordService;
@@ -20,7 +19,6 @@ import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewCommentVO;
-import com.lzh.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -308,51 +306,45 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         //2.根据用户id查询
         Page<ReviewComment> page = query()
                 .eq("user_id",userId)
-                .orderByDesc("like_count")
+                .orderByDesc("create_time")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
         List<ReviewComment> rcList = page.getRecords();
         if (rcList.isEmpty()) {
-            PageResult<ReviewComment> result = new PageResult<>();
+            PageResult<ReviewCommentVO> result = new PageResult<>();
             result.setTotal(page.getTotal());
             result.setRecords(Collections.emptyList());
             return Result.ok(result);
         }
-
-        //3.获取影评id
-        Set<Long> reviewIds = reviewList.stream()
-                .map(Review::getId)
-                .collect(Collectors.toSet());
-
-        //4.查询当前用户点赞过的影评
-        Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
-
-        //5.批量查询评论数量
-        Map<Long, Integer> commentCountMap = getCommentCountMap(reviewIds);
-
-        //6.将列表转为VO
-        User user=userService.getById(userId);
-        String userName = user.getUsername();
-        String nickname = user.getNickname();
-        String avatar = user.getAvatar();
-        List<ReviewVO> reviewVOList = reviewList.stream()
-                .map(review -> {
-                    ReviewVO vo = new ReviewVO();
-                    BeanUtils.copyProperties(review, vo);
-                    vo.setUserName(userName);
-                    vo.setNickName(nickname);
-                    vo.setAvatar(avatar);
+        //3.查询当前用户点赞过的评论
+        Set<Long> likeReviewCommentIds = getLongs(rcList, userId);
+        //4.查询用户信息
+        UserDTO authorDTO = new UserDTO();
+        BeanUtils.copyProperties(userService.getById(userId), authorDTO);
+        Map<Long, User> replyUserMap = getReplyUserMap(rcList);
+        //5.将列表转为VO
+        List<ReviewCommentVO> rcVOList = rcList.stream()
+                .map(comment -> {
+                    ReviewCommentVO vo = new ReviewCommentVO();
+                    BeanUtils.copyProperties(comment, vo);
+                    vo.setAuthor(authorDTO);
+                    if(comment.getReplyUserId()!=0){
+                        UserDTO replyUserDTO = new UserDTO();
+                        BeanUtils.copyProperties(replyUserMap.get(comment.getReplyUserId()), replyUserDTO);
+                        vo.setReplyUser(replyUserDTO);
+                    }
                     vo.setIsLike(
-                            likeReviewIds.contains(review.getId())
-                    );
-                    vo.setCommentCount(
-                            commentCountMap.getOrDefault(review.getId(), 0)
+                            likeReviewCommentIds.contains(comment.getId())
                     );
                     vo.setCanEditAndDelete(true);
                     return vo;
                 })
                 .toList();
-        return Result.ok(reviewVOList);
+        //6.封装并返回
+        PageResult<ReviewCommentVO> result = new PageResult<>();
+        result.setTotal(page.getTotal());
+        result.setRecords(rcVOList);
+        return Result.ok(result);
     }
 
     private boolean isLike(Long commentId, Long userId) {
