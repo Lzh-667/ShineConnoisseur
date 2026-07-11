@@ -378,6 +378,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 .map(ReviewComment::getReplyUserId)
                 .filter(id -> id != 0)
                 .collect(Collectors.toSet());
+        if (replyUserIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
         List<User> replyUsers = userService.listByIds(replyUserIds);
         return replyUsers.stream()
                 .collect(Collectors.toMap(
