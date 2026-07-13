@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
 import com.lzh.dto.ReviewDTO;
 import com.lzh.dto.ReviewHotDTO;
-import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.mapper.ReviewMapper;
 import com.lzh.po.*;
 import com.lzh.service.*;
@@ -37,8 +36,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     private IUserService userService;
     @Resource
     private ILikeRecordService likeRecordService;
-    @Resource
-    private ReviewCommentMapper reviewCommentMapper;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
@@ -95,53 +92,21 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
 
         //5.获取影评id和用户id
-        Set<Long> reviewIds = reviewList.stream()
-                .map(Review::getId)
-                .collect(Collectors.toSet());
+        Set<Long> reviewIds = getReviewIds(reviewList);
 
-        Set<Long> userIds = reviewList.stream()
-                .map(Review::getUserId)
-                .collect(Collectors.toSet());
+        Set<Long> userIds = getUserIds(reviewList);
 
         //6.批量查询用户
-        Map<Long, User> userMap = userService.listByIds(userIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        User::getId,
-                        user -> user
-                ));
+        Map<Long, User> userMap = getUserMap(userIds);
 
         //7.查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
 
-        //8.批量查询评论数量
-        Map<Long, Integer> commentCountMap = getCommentCountMap(reviewIds);
-
         //9.将列表转换为VO
-        List<ReviewVO> reviewVOList = reviewList.stream()
-                .map(review -> {
-                    ReviewVO vo = new ReviewVO();
-                    BeanUtils.copyProperties(review, vo);
-                    User user = userMap.get(review.getUserId());
-                    if (user != null) {
-                        vo.setUserName(user.getUsername());
-                        vo.setNickName(user.getNickname());
-                        vo.setAvatar(user.getAvatar());
-                    }
-                    vo.setIsLike(
-                            likeReviewIds.contains(review.getId())
-                    );
-                    vo.setCommentCount(
-                            commentCountMap.getOrDefault(review.getId(), 0)
-                    );
-                    vo.setCanEditAndDelete(
-                            review.getUserId().equals(userId)
-                    );
-                    return vo;
-                })
-                .toList();
+        List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds,userId);
         return Result.ok(reviewVOList);
     }
+
 
     @Override
     public Result myReviews(Integer current) {
@@ -159,15 +124,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
 
         //3.获取影评id
-        Set<Long> reviewIds = reviewList.stream()
-                .map(Review::getId)
-                .collect(Collectors.toSet());
+        Set<Long> reviewIds = getReviewIds(reviewList);
 
         //4.查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
-
-        //5.批量查询评论数量
-        Map<Long, Integer> commentCountMap = getCommentCountMap(reviewIds);
 
         //6.将列表转为VO
         User user=userService.getById(userId);
@@ -183,9 +143,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     vo.setAvatar(avatar);
                     vo.setIsLike(
                             likeReviewIds.contains(review.getId())
-                    );
-                    vo.setCommentCount(
-                            commentCountMap.getOrDefault(review.getId(), 0)
                     );
                     vo.setCanEditAndDelete(true);
                     return vo;
@@ -402,30 +359,24 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         List<Long> listIds = Objects.requireNonNull(setIds).stream()
                 .map(Long::valueOf)
                 .toList();
-        List<Review> reviews = listByIds(listIds);
-        if(reviews.isEmpty()){
+        List<Review> reviewList = listByIds(listIds);
+        if(reviewList.isEmpty()){
               return Result.ok(Collections.emptyList());
         }
         //3.获取用户id和影评id
-        Set<Long> userIds = reviews.stream()
-                .map(Review::getUserId)
-                .collect(Collectors.toSet());
-        Set<Long> reviewIds = reviews.stream()
-                .map(Review::getId)
-                .collect(Collectors.toSet());
+        Set<Long> userIds = getUserIds(reviewList);
+        Set<Long> reviewIds = getReviewIds(reviewList);
         //4.批量查询用户
-        Map<Long, User> userMap = userService.listByIds(userIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        User::getId,
-                        user -> user
-                ));
+        Map<Long, User> userMap = getUserMap(userIds);
         //5.查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
-        //6.批量查询评论数据
-        Map<Long, Integer> commentCountMap = getCommentCountMap(reviewIds);
         //7.转化为VO
-        List<ReviewVO> reviewVOList = reviews.stream()
+        List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds, userId);
+        return Result.ok(reviewVOList);
+    }
+
+    private static List<ReviewVO> getReviewVOList(List<Review> reviewList, Map<Long, User> userMap, Set<Long> likeReviewIds, Long userId) {
+        return reviewList.stream()
                 .map(
                         review -> {
                             ReviewVO vo = new ReviewVO();
@@ -439,15 +390,20 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                             vo.setIsLike(
                                     likeReviewIds.contains(review.getId())
                             );
-                            vo.setCommentCount(
-                                    commentCountMap.getOrDefault(review.getId(), 0)
-                            );
                             vo.setCanEditAndDelete(
                                     review.getUserId().equals(userId)
                             );
                             return vo;
                         }).toList();
-        return Result.ok(reviewVOList);
+    }
+
+    private Map<Long, User> getUserMap(Set<Long> userIds) {
+        return userService.listByIds(userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        user -> user
+                ));
     }
 
     @Override
@@ -464,7 +420,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .map(review -> {
                     ReviewHotDTO dto = new ReviewHotDTO();
                     dto.setReviewId(review.getId());
-                    double score = review.getLikeCount()*10;
+                    double score = review.getLikeCount()*10 + review.getCommentCount()*5;
                     dto.setScore(score);
                     return dto;
                 })
@@ -488,6 +444,17 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
     }
 
+    private static Set<Long> getUserIds(List<Review> reviewList) {
+        return reviewList.stream()
+                .map(Review::getUserId)
+                .collect(Collectors.toSet());
+    }
+
+    private static Set<Long> getReviewIds(List<Review> reviewList) {
+        return reviewList.stream()
+                .map(Review::getId)
+                .collect(Collectors.toSet());
+    }
     private Set<Long> getLikeReviewIds(Long userId, Set<Long> reviewIds) {
         return likeRecordService.query()
                 .eq("user_id", userId)
@@ -499,12 +466,4 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .collect(Collectors.toSet());
     }
 
-    private Map<Long, Integer> getCommentCountMap(Set<Long> reviewIds) {
-        return reviewCommentMapper.countByReviewIds(reviewIds)
-                        .stream()
-                        .collect(Collectors.toMap(
-                                map -> ((Number) map.get("review_id")).longValue(),
-                                map -> ((Number) map.get("count")).intValue()
-                        ));
-    }
 }
