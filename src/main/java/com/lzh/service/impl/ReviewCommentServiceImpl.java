@@ -71,9 +71,12 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         boolean isSuccess = save(reviewComment);
         if(isSuccess) {
             //修改评论数
-            isSuccess = reviewService.update().setSql("comment_count", "comment_count+1").update();
+            isSuccess = reviewService.update()
+                    .setSql("comment_count", "comment_count+1")
+                    .eq("id", reviewId)
+                    .update();
             if (!isSuccess) {
-                throw new RuntimeException("修改失败");
+                throw new RuntimeException("添加失败");
             }
             if (reviewCommentDTO.getRootId() == 0) {
                 /*设置一级评论根评论id为自身，回复用户id为0*/
@@ -305,6 +308,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             reviewService.update()
                     .setSql("comment_count=comment_count-1")
                     .eq("id", comment.getReviewId())
+                    .gt("comment_count", 0)
                     .update();
             //删除缓存
             stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
