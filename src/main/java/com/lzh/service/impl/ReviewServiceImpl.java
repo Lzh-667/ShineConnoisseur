@@ -394,8 +394,60 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
     @Override
     public Result hotReviews(Integer current) {
-
-
+        //1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //2.查询redis
+        String key = RedisConstants.HOT_REVIEW_KEY;
+        Set<String> setIds = stringRedisTemplate.opsForZSet().reverseRange(key, 0, 99);
+        List<Long> listIds = Objects.requireNonNull(setIds).stream()
+                .map(Long::valueOf)
+                .toList();
+        List<Review> reviews = listByIds(listIds);
+        if(reviews.isEmpty()){
+              return Result.ok(Collections.emptyList());
+        }
+        //3.获取用户id和影评id
+        Set<Long> userIds = reviews.stream()
+                .map(Review::getUserId)
+                .collect(Collectors.toSet());
+        Set<Long> reviewIds = reviews.stream()
+                .map(Review::getId)
+                .collect(Collectors.toSet());
+        //4.批量查询用户
+        Map<Long, User> userMap = userService.listByIds(userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        user -> user
+                ));
+        //5.查询当前用户点赞过的影评
+        Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
+        //6.批量查询评论数据
+        Map<Long, Integer> commentCountMap = getCommentCountMap(reviewIds);
+        //7.转化为VO
+        List<ReviewVO> reviewVOList = reviews.stream()
+                .map(
+                        review -> {
+                            ReviewVO vo = new ReviewVO();
+                            BeanUtils.copyProperties(review, vo);
+                            User user = userMap.get(review.getUserId());
+                            if (user != null) {
+                                vo.setUserName(user.getUsername());
+                                vo.setNickName(user.getNickname());
+                                vo.setAvatar(user.getAvatar());
+                            }
+                            vo.setIsLike(
+                                    likeReviewIds.contains(review.getId())
+                            );
+                            vo.setCommentCount(
+                                    commentCountMap.getOrDefault(review.getId(), 0)
+                            );
+                            vo.setCanEditAndDelete(
+                                    review.getUserId().equals(userId)
+                            );
+                            return vo;
+                        }).toList();
+        return Result.ok(reviewVOList);
     }
 
     @Override
@@ -412,8 +464,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .map(review -> {
                     ReviewHotDTO dto = new ReviewHotDTO();
                     dto.setReviewId(review.getId());
-                    double score =
-                            review.getLikeCount()*10;
+                    double score = review.getLikeCount()*10;
                     dto.setScore(score);
                     return dto;
                 })
@@ -422,7 +473,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                                 ReviewHotDTO::getScore
                         ).reversed()
                 )
-                .limit(50)
+                .limit(100)
                 .toList();
         //3.写入redis
         String key = RedisConstants.HOT_REVIEW_KEY;

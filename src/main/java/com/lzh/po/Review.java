@@ -39,6 +39,10 @@ public class Review {
     @TableField("like_count")
     private Integer likeCount=0;
 
+    /** 评论数 */
+    @TableField("comment_count")
+    private Integer commentCount=0;
+
     /** 状态：0-删除，1-正常，2-审核中 */
     @TableLogic(value = "1", delval = "0")
     private Integer status;

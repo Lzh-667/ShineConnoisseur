@@ -16,6 +16,7 @@ CREATE TABLE `review` (
                           `content`     TEXT            NOT NULL COMMENT '影评内容',
                           `spoiler`     TINYINT         NOT NULL DEFAULT 0 COMMENT '是否剧透：0-否，1-是',
                           `like_count`  INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '点赞数',
+                          `comment_count`  INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '评论数',
                           `status`      TINYINT         NOT NULL DEFAULT 1 COMMENT '状态：0-删除，1-正常，2-审核中',
                           `create_time` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           `update_time` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
