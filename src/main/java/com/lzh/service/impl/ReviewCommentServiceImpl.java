@@ -13,6 +13,7 @@ import com.lzh.po.ReviewComment;
 import com.lzh.po.User;
 import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IReviewCommentService;
+import com.lzh.service.IReviewService;
 import com.lzh.service.IUserService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
@@ -36,6 +37,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Resource
     private ILikeRecordService likeRecordService;
+
+    @Resource
+    private IReviewService reviewService;
 
     @Resource
     private IUserService userService;
@@ -65,17 +69,25 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         }
         //4.保存到数据库
         boolean isSuccess = save(reviewComment);
-        if(!isSuccess) {
-            return Result.fail("添加失败");
-        }
-        if(reviewCommentDTO.getRootId()==0){
-            /*设置一级评论根评论id为自身，回复用户id为0*/
-            reviewComment.setRootId(reviewComment.getId());
-            reviewComment.setReplyUserId(0L);
-            isSuccess = updateById(reviewComment);
-            if(!isSuccess){
-                return Result.fail("添加失败");
+        if(isSuccess) {
+            //5.修改评论数
+            isSuccess = reviewService.update().setSql("comment_count", "comment_count+1").update();
+            if (!isSuccess) {
+                throw new RuntimeException("修改失败");
             }
+            if (reviewCommentDTO.getRootId() == 0) {
+                /*设置一级评论根评论id为自身，回复用户id为0*/
+                reviewComment.setRootId(reviewComment.getId());
+                reviewComment.setReplyUserId(0L);
+                isSuccess = updateById(reviewComment);
+                if (!isSuccess) {
+                    throw new RuntimeException("添加失败");
+                }
+            }
+        }
+        else{
+            log.info("添加失败");
+            return Result.fail("添加失败");
         }
         return Result.ok();
     }
@@ -283,12 +295,18 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         //3.修改数据
         boolean isSuccess = removeById(reviewCommentId);
         if(isSuccess){
-            //删除点赞数据和缓存
+            //删除点赞数据
             likeRecordService.remove(
                     new QueryWrapper<LikeRecord>()
                             .eq("target_id", reviewCommentId)
                             .eq("target_type", SystemConstants.TARGET_COMMENT)
             );
+            //修改评论数
+            reviewService.update()
+                    .setSql("comment_count=comment_count-1")
+                    .eq("id", comment.getReviewId())
+                    .update();
+            //删除缓存
             stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
             log.info("删除成功");
             return Result.ok();
