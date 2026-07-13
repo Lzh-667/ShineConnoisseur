@@ -361,7 +361,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .toList();
         List<Review> reviewList = listByIds(listIds);
         if(reviewList.isEmpty()){
-              return Result.ok(Collections.emptyList());
+              return Result.fail("服务器异常");
         }
         //3.获取用户id和影评id
         Set<Long> userIds = getUserIds(reviewList);
