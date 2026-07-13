@@ -20,7 +20,6 @@ public class MessageMQConfig {
     }
     @Bean
     public Queue messageQueue(){
-
         return new Queue(
                 MQConstants.MESSAGE_QUEUE,
                 true
@@ -31,7 +30,6 @@ public class MessageMQConfig {
             Queue messageQueue,
             TopicExchange messageExchange
     ){
-
         return BindingBuilder
                 .bind(messageQueue)
                 .to(messageExchange)

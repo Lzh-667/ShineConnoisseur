@@ -23,10 +23,11 @@ public class MessageConsumer {
         Message message = new Message();
         BeanUtils.copyProperties(dto, message);
         message.setStatus(0);
-        boolean success = messageService.save(message);
-        if (!success) {
-            throw new RuntimeException("消息保存失败");
+        try {
+            messageService.save(message);
+        } catch (Exception e) {
+            log.error("消息消费失败",e);
+            throw e;
         }
-        log.info("消息保存成功");
     }
 }

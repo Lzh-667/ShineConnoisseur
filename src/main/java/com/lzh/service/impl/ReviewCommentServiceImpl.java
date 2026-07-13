@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
+import com.lzh.dto.MessageDTO;
 import com.lzh.dto.ReviewCommentDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.ReviewCommentMapper;
@@ -15,6 +16,7 @@ import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IReviewCommentService;
 import com.lzh.service.IReviewService;
 import com.lzh.service.IUserService;
+import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -22,6 +24,7 @@ import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewCommentVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -37,15 +40,14 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Resource
     private ILikeRecordService likeRecordService;
-
     @Resource
     private IReviewService reviewService;
-
     @Resource
     private IUserService userService;
-
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private RabbitTemplate rabbitTemplate;
 
     @Transactional
     @Override
@@ -87,6 +89,17 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new RuntimeException("添加失败");
                 }
             }
+            // 发送评论消息
+            MessageDTO dto = new MessageDTO();
+            Long id = reviewService.query().eq("id", reviewId).select("user_id").one().getUserId();
+            dto.setUserId(id);
+            dto.setFromUserId(userId);
+            dto.setType(reviewCommentDTO.getRootId() == 0?SystemConstants.MESSAGE_TYPE_COMMENT:SystemConstants.MESSAGE_TYPE_REPLY_COMMENT);
+            dto.setTargetType(SystemConstants.MESSAGE_TARGET_COMMENT);
+            dto.setTargetId(reviewComment.getId());
+            String content = "用户" + userService.getById(userId).getNickname() + "评论了你的影评";
+            dto.setContent(content);
+            rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.comment", dto);
         }
         else{
             log.info("添加失败");
@@ -270,6 +283,17 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 }
                 log.info("点赞成功");
                 stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
+                // 发送点赞消息
+                MessageDTO dto = new MessageDTO();
+                Long id = query().eq("id", reviewCommentId).select("user_id").one().getUserId();
+                dto.setUserId(id);
+                dto.setFromUserId(userId);
+                dto.setType(SystemConstants.MESSAGE_TYPE_LIKE_COMMENT);
+                dto.setTargetType(SystemConstants.MESSAGE_TARGET_COMMENT);
+                dto.setTargetId(reviewCommentId);
+                String content = "用户" + userService.getById(userId).getNickname() + "点赞了你的评论";
+                dto.setContent(content);
+                rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.like.comment", dto);
             }
             else{
                 log.info("点赞失败");

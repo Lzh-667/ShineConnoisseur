@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
+import com.lzh.dto.MessageDTO;
 import com.lzh.dto.ReviewDTO;
 import com.lzh.dto.ReviewHotDTO;
 import com.lzh.mapper.ReviewMapper;
 import com.lzh.po.*;
 import com.lzh.service.*;
+import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -16,6 +18,7 @@ import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -40,6 +43,8 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     private ILikeRecordService likeRecordService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private RabbitTemplate rabbitTemplate;
 
     @Transactional
     @Override
@@ -221,6 +226,17 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 log.info("点赞成功");
                 //移除缓存
                 stringRedisTemplate.opsForSet().add(RedisConstants.LIKE_REVIEW_KEY + reviewId, userId.toString());
+                // 发送点赞消息
+                MessageDTO dto = new MessageDTO();
+                Long id = query().eq("id", reviewId).select("user_id").one().getUserId();
+                dto.setUserId(id);
+                dto.setFromUserId(userId);
+                dto.setType(SystemConstants.MESSAGE_TYPE_LIKE_REVIEW);
+                dto.setTargetType(SystemConstants.MESSAGE_TARGET_REVIEW);
+                dto.setTargetId(reviewId);
+                String content = "用户" + userService.getById(userId).getNickname() + "点赞了你的影评";
+                dto.setContent(content);
+                rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.like.review", dto);
             }
             else{
                 log.info("点赞失败");
