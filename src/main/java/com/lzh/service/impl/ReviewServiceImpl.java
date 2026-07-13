@@ -374,38 +374,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds, userId);
         return Result.ok(reviewVOList);
     }
-
-    private static List<ReviewVO> getReviewVOList(List<Review> reviewList, Map<Long, User> userMap, Set<Long> likeReviewIds, Long userId) {
-        return reviewList.stream()
-                .map(
-                        review -> {
-                            ReviewVO vo = new ReviewVO();
-                            BeanUtils.copyProperties(review, vo);
-                            User user = userMap.get(review.getUserId());
-                            if (user != null) {
-                                vo.setUserName(user.getUsername());
-                                vo.setNickName(user.getNickname());
-                                vo.setAvatar(user.getAvatar());
-                            }
-                            vo.setIsLike(
-                                    likeReviewIds.contains(review.getId())
-                            );
-                            vo.setCanEditAndDelete(
-                                    review.getUserId().equals(userId)
-                            );
-                            return vo;
-                        }).toList();
-    }
-
-    private Map<Long, User> getUserMap(Set<Long> userIds) {
-        return userService.listByIds(userIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        User::getId,
-                        user -> user
-                ));
-    }
-
     @Override
     public void updateHotReviewCache() {
         //1.查询最近30天影评
@@ -443,13 +411,40 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     );
         }
     }
-
+    private static List<ReviewVO> getReviewVOList(List<Review> reviewList, Map<Long, User> userMap, Set<Long> likeReviewIds, Long userId) {
+        return reviewList.stream()
+                .map(
+                        review -> {
+                            ReviewVO vo = new ReviewVO();
+                            BeanUtils.copyProperties(review, vo);
+                            User user = userMap.get(review.getUserId());
+                            if (user != null) {
+                                vo.setUserName(user.getUsername());
+                                vo.setNickName(user.getNickname());
+                                vo.setAvatar(user.getAvatar());
+                            }
+                            vo.setIsLike(
+                                    likeReviewIds.contains(review.getId())
+                            );
+                            vo.setCanEditAndDelete(
+                                    review.getUserId().equals(userId)
+                            );
+                            return vo;
+                        }).toList();
+    }
+    private Map<Long, User> getUserMap(Set<Long> userIds) {
+        return userService.listByIds(userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        user -> user
+                ));
+    }
     private static Set<Long> getUserIds(List<Review> reviewList) {
         return reviewList.stream()
                 .map(Review::getUserId)
                 .collect(Collectors.toSet());
     }
-
     private static Set<Long> getReviewIds(List<Review> reviewList) {
         return reviewList.stream()
                 .map(Review::getId)
@@ -465,5 +460,4 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .map(LikeRecord::getTargetId)
                 .collect(Collectors.toSet());
     }
-
 }
