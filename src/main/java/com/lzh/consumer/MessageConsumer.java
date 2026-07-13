@@ -29,5 +29,6 @@ public class MessageConsumer {
             log.error("消息消费失败",e);
             throw e;
         }
+        log.info("消息消费成功");
     }
 }
