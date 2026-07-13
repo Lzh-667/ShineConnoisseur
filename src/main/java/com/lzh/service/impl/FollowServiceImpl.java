@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
+import com.lzh.dto.MessageDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.FollowMapper;
 import com.lzh.po.User;
@@ -11,6 +12,7 @@ import com.lzh.po.UserFollow;
 import com.lzh.service.IFollowService;
 import com.lzh.service.IUserService;
 import com.lzh.utils.RedisConstants;
+import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -218,6 +220,11 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 // 移除缓存
                 stringRedisTemplate.delete(RedisConstants.FOLLOWER_KEY + id);
                 stringRedisTemplate.delete(RedisConstants.FOLLOWING_KEY + userId);
+                // 发送关注消息
+                MessageDTO dto = new MessageDTO();
+                dto.setUserId(userId);
+                dto.setFromUserId(id);
+                dto.setType(System);
             }
             else{
                 log.info("取关失败");
