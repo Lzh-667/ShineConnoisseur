@@ -53,7 +53,7 @@ public class ReviewController {
     }
 
     @GetMapping("/hot")
-    public Result hotReviews(@RequestParam(value = "current", defaultValue = "1") Integer current){
-        return reviewService.hotReviews(current);
+    public Result hotReviews(){
+        return reviewService.hotReviews();
     }
 }

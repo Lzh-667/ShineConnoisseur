@@ -22,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -350,28 +352,40 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     }
 
     @Override
-    public Result hotReviews(Integer current) {
+    public Result hotReviews() {
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.查询redis
         String key = RedisConstants.HOT_REVIEW_KEY;
         Set<String> setIds = stringRedisTemplate.opsForZSet().reverseRange(key, 0, 99);
+        if(setIds == null || setIds.isEmpty()){
+            updateHotReviewCache();
+            setIds = stringRedisTemplate.opsForZSet()
+                    .reverseRange(key,0,99);
+        }
         List<Long> listIds = Objects.requireNonNull(setIds).stream()
                 .map(Long::valueOf)
                 .toList();
         List<Review> reviewList = listByIds(listIds);
-        if(reviewList.isEmpty()){
-              return Result.fail("服务器异常");
-        }
+        //保持redis排名顺序
+        Map<Long, Review> reviewMap = reviewList.stream()
+                .collect(Collectors.toMap(
+                        Review::getId,
+                        Function.identity()
+                ));
+        List<Review> sortReviewList = listIds.stream()
+                .map(reviewMap::get)
+                .filter(Objects::nonNull)
+                .toList();
         //3.获取用户id和影评id
-        Set<Long> userIds = getUserIds(reviewList);
-        Set<Long> reviewIds = getReviewIds(reviewList);
+        Set<Long> userIds = getUserIds(sortReviewList);
+        Set<Long> reviewIds = getReviewIds(sortReviewList);
         //4.批量查询用户
         Map<Long, User> userMap = getUserMap(userIds);
         //5.查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
         //7.转化为VO
-        List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds, userId);
+        List<ReviewVO> reviewVOList = getReviewVOList(sortReviewList, userMap, likeReviewIds, userId);
         return Result.ok(reviewVOList);
     }
     @Override
@@ -388,7 +402,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .map(review -> {
                     ReviewHotDTO dto = new ReviewHotDTO();
                     dto.setReviewId(review.getId());
-                    double score = review.getLikeCount()*10 + review.getCommentCount()*5;
+                    long hours = ChronoUnit.HOURS.between(
+                            review.getCreateTime(),
+                            LocalDateTime.now()
+                    );
+                    double score = (review.getLikeCount()*10 + review.getCommentCount()*5) / Math.sqrt(hours+2);
                     dto.setScore(score);
                     return dto;
                 })
@@ -400,16 +418,19 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .limit(100)
                 .toList();
         //3.写入redis
-        String key = RedisConstants.HOT_REVIEW_KEY;
-        stringRedisTemplate.delete( key);
+        String oldKey = RedisConstants.HOT_REVIEW_KEY;
+        String newKey = RedisConstants.HOT_REVIEW_KEY + ":temp";
+        stringRedisTemplate.delete(newKey);
         for(ReviewHotDTO review:hotReviews){
             stringRedisTemplate.opsForZSet()
                     .add(
-                            key,
+                            newKey,
                             review.getReviewId().toString(),
                             review.getScore()
                     );
         }
+        stringRedisTemplate.delete(oldKey);
+        stringRedisTemplate.rename(newKey, oldKey);
     }
     private static List<ReviewVO> getReviewVOList(List<Review> reviewList, Map<Long, User> userMap, Set<Long> likeReviewIds, Long userId) {
         return reviewList.stream()

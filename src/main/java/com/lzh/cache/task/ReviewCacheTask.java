@@ -16,7 +16,7 @@ public class ReviewCacheTask {
         try {
             reviewService.updateHotReviewCache();
         }catch(Exception e){
-            log.error("刷新热门评论缓存失败",e);
+            log.error("刷新热门影评缓存失败",e);
         }
     }
 }
