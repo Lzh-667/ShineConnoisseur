@@ -1,5 +1,6 @@
 package com.lzh.config;
 
+import com.lzh.utils.MQConstants;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
@@ -9,13 +10,10 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MessageMQConfig {
-
-    public static final String MESSAGE_EXCHANGE = "message.exchange";
-    public static final String MESSAGE_QUEUE="message.queue";
     @Bean
     public TopicExchange messageExchange(){
         return new TopicExchange(
-                MESSAGE_EXCHANGE,
+                MQConstants.MESSAGE_EXCHANGE,
                 true,
                 false
         );
@@ -24,7 +22,7 @@ public class MessageMQConfig {
     public Queue messageQueue(){
 
         return new Queue(
-                MESSAGE_QUEUE,
+                MQConstants.MESSAGE_QUEUE,
                 true
         );
     }

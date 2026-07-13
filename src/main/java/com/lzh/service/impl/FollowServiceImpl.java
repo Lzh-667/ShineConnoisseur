@@ -11,11 +11,13 @@ import com.lzh.po.User;
 import com.lzh.po.UserFollow;
 import com.lzh.service.IFollowService;
 import com.lzh.service.IUserService;
+import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
 
     @Resource
     private IUserService userService;
+
+    @Resource
+    private RabbitTemplate rabbitTemplate;
 
     @Override
     public Result getFollowerList() {
@@ -192,6 +197,16 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 // 移除缓存
                 stringRedisTemplate.delete(RedisConstants.FOLLOWER_KEY + id);
                 stringRedisTemplate.delete(RedisConstants.FOLLOWING_KEY + userId);
+                // 发送关注消息
+                MessageDTO dto = new MessageDTO();
+                dto.setUserId(id);
+                dto.setFromUserId(userId);
+                dto.setType(SystemConstants.MESSAGE_TYPE_FOLLOW);
+                dto.setTargetType(SystemConstants.MESSAGE_TARGET_USER);
+                dto.setTargetId(userId);
+                String content = "用户" + userService.getById(userId).getNickname() + "关注了你";
+                dto.setContent(content);
+                rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.follow", dto);
             }
             else{
                 log.info("关注失败");
@@ -220,11 +235,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 // 移除缓存
                 stringRedisTemplate.delete(RedisConstants.FOLLOWER_KEY + id);
                 stringRedisTemplate.delete(RedisConstants.FOLLOWING_KEY + userId);
-                // 发送关注消息
-                MessageDTO dto = new MessageDTO();
-                dto.setUserId(userId);
-                dto.setFromUserId(id);
-                dto.setType(System);
             }
             else{
                 log.info("取关失败");
