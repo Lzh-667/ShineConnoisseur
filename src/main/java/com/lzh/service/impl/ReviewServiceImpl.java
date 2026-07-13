@@ -359,11 +359,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         String key = RedisConstants.HOT_REVIEW_KEY;
         Set<String> setIds = stringRedisTemplate.opsForZSet().reverseRange(key, 0, 99);
         if(setIds == null || setIds.isEmpty()){
-            updateHotReviewCache();
-            setIds = stringRedisTemplate.opsForZSet()
-                    .reverseRange(key,0,99);
+            return Result.fail("暂无热门影评");
         }
-        List<Long> listIds = Objects.requireNonNull(setIds).stream()
+        List<Long> listIds = setIds.stream()
                 .map(Long::valueOf)
                 .toList();
         List<Review> reviewList = listByIds(listIds);
@@ -406,7 +404,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                             review.getCreateTime(),
                             LocalDateTime.now()
                     );
-                    double score = (review.getLikeCount()*10 + review.getCommentCount()*5) / Math.sqrt(hours+2);
+                    double score = (review.getLikeCount()*10 + review.getCommentCount()*5+20) / Math.sqrt(hours+2);
                     dto.setScore(score);
                     return dto;
                 })
@@ -429,7 +427,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                             review.getScore()
                     );
         }
-        stringRedisTemplate.delete(oldKey);
         stringRedisTemplate.rename(newKey, oldKey);
     }
     private static List<ReviewVO> getReviewVOList(List<Review> reviewList, Map<Long, User> userMap, Set<Long> likeReviewIds, Long userId) {
