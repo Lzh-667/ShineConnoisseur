@@ -17,4 +17,8 @@ public interface IReviewService extends IService<Review> {
     Result updateReview(Long reviewId, ReviewDTO reviewDTO);
 
     Result deleteReview(Long reviewId);
+
+    Result hotReviews(Integer current);
+
+    void updateHotReviewCache();
 }

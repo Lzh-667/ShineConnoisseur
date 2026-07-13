@@ -1,17 +1,17 @@
-package com.lzh.cache;
+package com.lzh.cache.init;
 
-import com.lzh.service.IMovieService;
+import com.lzh.service.IReviewService;
 import jakarta.annotation.Resource;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MovieCacheInit implements ApplicationRunner {
+public class ReviewCacheInit implements ApplicationRunner {
     @Resource
-    private IMovieService movieService;
+    private IReviewService reviewService;
     @Override
     public void run(ApplicationArguments args){
-        movieService.updateHotMovieCache();
+        reviewService.updateHotReviewCache();
     }
 }

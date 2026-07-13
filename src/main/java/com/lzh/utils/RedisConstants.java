@@ -35,6 +35,8 @@ public class RedisConstants {
     public static final Long FOLLOWER_EMPTY_TTL = 20L;
     /**影评*/
     public static final String LIKE_REVIEW_KEY = "review:like:";
+    public static final String HOT_REVIEW_KEY = "review:hot:";
+
     /**电影*/
     public static final String MOVIE_INFO_KEY = "movie:info:";
     public static final Long MOVIE_INFO_TTL = 25L;

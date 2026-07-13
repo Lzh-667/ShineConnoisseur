@@ -1,4 +1,4 @@
-package com.lzh.cache;
+package com.lzh.cache.task;
 
 import com.lzh.service.IMovieService;
 import jakarta.annotation.Resource;

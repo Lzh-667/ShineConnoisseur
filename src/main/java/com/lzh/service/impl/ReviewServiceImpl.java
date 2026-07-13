@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
 import com.lzh.dto.ReviewDTO;
+import com.lzh.dto.ReviewHotDTO;
 import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.mapper.ReviewMapper;
 import com.lzh.po.*;
@@ -21,10 +22,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -390,6 +389,51 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         else{
             log.info("删除失败");
             return Result.fail("删除失败");
+        }
+    }
+
+    @Override
+    public Result hotReviews(Integer current) {
+
+
+    }
+
+    @Override
+    public void updateHotReviewCache() {
+        //1.查询最近30天影评
+        List<Review> reviews= lambdaQuery()
+                .gt(
+                        Review::getCreateTime,
+                        LocalDateTime.now().minusDays(30)
+                )
+                .list();
+        //2.计算score并排序
+        List<ReviewHotDTO> hotReviews = reviews.stream()
+                .map(review -> {
+                    ReviewHotDTO dto = new ReviewHotDTO();
+                    dto.setReviewId(review.getId());
+                    double score =
+                            review.getLikeCount()*10;
+                    dto.setScore(score);
+                    return dto;
+                })
+                .sorted(
+                        Comparator.comparing(
+                                ReviewHotDTO::getScore
+                        ).reversed()
+                )
+                .limit(50)
+                .toList();
+        //3.写入redis
+        String key = RedisConstants.HOT_REVIEW_KEY;
+        stringRedisTemplate.delete( key);
+        for(ReviewHotDTO review:hotReviews){
+            stringRedisTemplate.opsForZSet()
+                    .add(
+                            key,
+                            review.getReviewId().toString(),
+                            review.getScore()
+                    );
         }
     }
 

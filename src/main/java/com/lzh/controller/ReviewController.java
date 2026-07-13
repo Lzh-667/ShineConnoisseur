@@ -51,4 +51,9 @@ public class ReviewController {
     public Result deleteReview(@PathVariable("reviewId") Long reviewId){
         return reviewService.deleteReview(reviewId);
     }
+
+    @GetMapping("/hot")
+    public Result hotReviews(@RequestParam(value = "current", defaultValue = "1") Integer current){
+        return reviewService.hotReviews(current);
+    }
 }
