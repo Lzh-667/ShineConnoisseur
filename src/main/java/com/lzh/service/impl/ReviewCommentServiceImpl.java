@@ -70,7 +70,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         //4.保存到数据库
         boolean isSuccess = save(reviewComment);
         if(isSuccess) {
-            //5.修改评论数
+            //修改评论数
             isSuccess = reviewService.update().setSql("comment_count", "comment_count+1").update();
             if (!isSuccess) {
                 throw new RuntimeException("修改失败");
