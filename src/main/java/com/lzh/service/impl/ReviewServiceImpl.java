@@ -90,6 +90,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         //4.查询影评列表
         Page<Review> page = query()
                 .eq("movie_id", movieId)
+                .eq("status", SystemConstants.REVIEW_STATUS_NORMAL)
                 .orderByDesc("like_count")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
@@ -122,6 +123,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         //2.根据用户id查询
         Page<Review> page = query()
                 .eq("user_id",userId)
+                .eq("status",SystemConstants.REVIEW_STATUS_NORMAL)
                 .orderByDesc("like_count")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 

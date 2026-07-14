@@ -116,7 +116,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Page<ReviewComment> page = query()
                 .eq("review_id",reviewId)
                 .eq("reply_user_id",0)
-                .eq("status",1)
+                .eq("status",SystemConstants.COMMENT_STATUS_NORMAL)
                 .orderByDesc("like_count")
                 .orderByDesc("create_time")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
@@ -167,7 +167,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Page<ReviewComment> page = query()
                 .eq("root_id",rootId)
                 .ne("reply_user_id",0)
-                .eq("status",1)
+                .eq("status",SystemConstants.COMMENT_STATUS_NORMAL)
                 .orderByDesc("create_time")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<ReviewComment> rcList = page.getRecords();
@@ -353,6 +353,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Page<ReviewComment> page = query()
                 .eq("user_id",userId)
                 .orderByDesc("create_time")
+                .eq("status", SystemConstants.COMMENT_STATUS_NORMAL)
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
         List<ReviewComment> rcList = page.getRecords();
