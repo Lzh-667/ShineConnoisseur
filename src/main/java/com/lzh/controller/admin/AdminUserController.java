@@ -16,7 +16,6 @@ public class AdminUserController {
     private IAdminUserService adminUserService;
     @Resource
     private IUserService userService;
-
     @GetMapping("/list")
     public Result list(@RequestParam(value = "current",defaultValue = "1") Long  current){
           return adminUserService.list(current);
