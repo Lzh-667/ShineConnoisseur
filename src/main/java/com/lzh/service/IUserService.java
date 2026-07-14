@@ -17,4 +17,6 @@ public interface IUserService extends IService<User> {
     Result register(RegisterFormDTO registerFormDTO);
 
     Result sendRegisterCode(String phone);
+
+    Result info(Long id);
 }

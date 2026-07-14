@@ -4,15 +4,14 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
+import com.lzh.utils.AdminHolder;
 import com.lzh.vo.AdminUserVO;
 import com.lzh.po.User;
 import com.lzh.service.IAdminUserService;
 import com.lzh.service.IUserService;
 import com.lzh.utils.SystemConstants;
-import com.lzh.vo.UserInfo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -41,36 +40,32 @@ public class AdminUserServiceImpl implements IAdminUserService {
         return Result.ok(result);
     }
     @Override
-    public Result info(Long userId) {
-        User user = userService.getById(userId);
+    public Result updateStatus(Long id) {
+        Long adminId = AdminHolder.getAdmin().getId();
+        //1.判断用户是否存在
+        User user = userService.getById(id);
         if(user==null){
             return Result.fail("用户不存在");
         }
-        UserInfo info = new UserInfo();
-        BeanUtils.copyProperties(user,info);
-        return Result.ok(info);
-    }
-
-    @Override
-    public Result status(Long id) {
-        //1.获取用户当前状态
-        Integer status = userService.getById(id).getStatus();
-        //2.判断是解封还是禁用
-        if(status==0){
-            //解封账号
-            boolean success=userService.update().set("status",1).eq("id",id).update();
-            if(!success){
-                log.info("解封失败");
-                return Result.fail("解封失败");
-            }
+        //2.获取用户当前状态
+        Integer status = user.getStatus();
+        //3.修改数据
+        Integer newStatus =  SystemConstants.USER_STATUS_NORMAL.equals(status)
+                ? SystemConstants.USER_STATUS_BAN
+                : SystemConstants.USER_STATUS_NORMAL;
+        boolean success = userService.update()
+                .set("status", newStatus)
+                .eq("id", id)
+                .update();
+        if(!success){
+            log.info("管理员{}修改用户状态失败,userId={}",adminId,id);
+            return Result.fail("修改失败");
+        }
+        if(SystemConstants.USER_STATUS_NORMAL.equals(status)){
+            log.info("管理员{}禁用了用户{}",adminId,id);
         }
         else{
-            //禁用账号
-            boolean success=userService.update().set("status",0).eq("id",id).update();
-            if(!success){
-                log.info("禁用失败");
-                return Result.fail("禁用失败");
-            }
+            log.info("管理员{}解封了用户{}",adminId,id);
         }
         return Result.ok();
     }

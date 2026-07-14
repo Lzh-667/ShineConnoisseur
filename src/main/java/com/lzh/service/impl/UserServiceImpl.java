@@ -16,8 +16,10 @@ import com.lzh.service.IUserService;
 import com.lzh.utils.PasswordEncoder;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
+import com.lzh.vo.UserInfo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -249,7 +251,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //返回
         return Result.ok();
     }
-
+    @Override
+    public Result info(Long id) {
+        User user = getById(id);
+        if(user==null){
+            return Result.fail("用户不存在");
+        }
+        UserInfo info = new UserInfo();
+        BeanUtils.copyProperties(user,info);
+        return Result.ok(info);
+    }
     private String createToken(User user) {
         //1.保存用户信息到redis
         //1.1.随机生成token，作为登陆令牌

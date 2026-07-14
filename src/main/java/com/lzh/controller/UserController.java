@@ -35,6 +35,10 @@ public class UserController {
     public Result register(@RequestBody RegisterFormDTO registerFormDTO) {
         return userService.register(registerFormDTO);
     }
+    @GetMapping("/info/{id}")
+    public Result info(@PathVariable("id") Long id) {
+        return userService.info(id);
+    }
     @PostMapping("/logout")
     public Result logout() {
         //TODO 实现登出功能
