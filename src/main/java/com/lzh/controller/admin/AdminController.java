@@ -1,4 +1,4 @@
-package com.lzh.controller;
+package com.lzh.controller.admin;
 
 import com.lzh.common.Result;
 import com.lzh.dto.AdminLoginDTO;
