@@ -9,8 +9,10 @@ import com.lzh.po.User;
 import com.lzh.service.IAdminUserService;
 import com.lzh.service.IUserService;
 import com.lzh.utils.SystemConstants;
+import com.lzh.vo.UserInfo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,5 +39,39 @@ public class AdminUserServiceImpl implements IAdminUserService {
         result.setRecords(vo);
         result.setTotal(page.getTotal());
         return Result.ok(result);
+    }
+    @Override
+    public Result info(Long userId) {
+        User user = userService.getById(userId);
+        if(user==null){
+            return Result.fail("用户不存在");
+        }
+        UserInfo info = new UserInfo();
+        BeanUtils.copyProperties(user,info);
+        return Result.ok(info);
+    }
+
+    @Override
+    public Result status(Long id) {
+        //1.获取用户当前状态
+        Integer status = userService.getById(id).getStatus();
+        //2.判断是解封还是禁用
+        if(status==0){
+            //解封账号
+            boolean success=userService.update().set("status",1).eq("id",id).update();
+            if(!success){
+                log.info("解封失败");
+                return Result.fail("解封失败");
+            }
+        }
+        else{
+            //禁用账号
+            boolean success=userService.update().set("status",0).eq("id",id).update();
+            if(!success){
+                log.info("禁用失败");
+                return Result.fail("禁用失败");
+            }
+        }
+        return Result.ok();
     }
 }

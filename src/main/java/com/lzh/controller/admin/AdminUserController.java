@@ -4,10 +4,7 @@ import com.lzh.common.Result;
 import com.lzh.service.IAdminUserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -21,8 +18,12 @@ public class AdminUserController {
     public Result list(@RequestParam(value = "current",defaultValue = "1") Long  current){
           return adminUserService.list(current);
     }
-    @GetMapping("/info")
-    public Result info(@RequestParam(value = "userId") Long userId){
-        return adminUserService.info(userId);
+    @GetMapping("/info/{id}")
+    public Result info(@PathVariable("id") Long id){
+        return adminUserService.info(id);
+    }
+    @PutMapping("/status/{id}")
+    public Result status(@PathVariable("id") Long id){
+        return adminUserService.status(id);
     }
 }
