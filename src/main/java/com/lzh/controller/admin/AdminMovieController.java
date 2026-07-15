@@ -14,6 +14,10 @@ public class AdminMovieController {
 
     @Resource
     private IAdminMovieService adminMovieService;
+    @GetMapping("/list")
+    public Result listMovies(@RequestParam(value = "current",defaultValue = "1") Long current){
+        return adminMovieService.listMovies(current);
+    }
     @PostMapping("/publish")
     public Result publishMovie(@RequestBody AdminMovieDTO movieDTO){
         return adminMovieService.publishMovie(movieDTO);

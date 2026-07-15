@@ -7,4 +7,6 @@ public interface IAdminMovieService {
     Result publishMovie(AdminMovieDTO movieDTO);
 
     Result updateMovie(AdminMovieDTO movieDTO,Long id);
+
+    Result listMovies(Long current);
 }
