@@ -28,7 +28,7 @@ public class AdminDashboardServiceImpl implements IAdminDashboardService {
     private StringRedisTemplate stringRedisTemplate;
     @Override
     public void refreshDashboardCache() {
-        //1.查询数据并转VO
+        //1.查询数据
         AdminDashboardVO vo = new AdminDashboardVO();
         vo.setUserCount(userService.count());
         vo.setMovieCount(movieService.count());
