@@ -8,6 +8,8 @@ import java.time.LocalDate;
 
 @Data
 public class MovieVO {
+
+    private Long id;
     /** 电影名称 */
     private String title;
 

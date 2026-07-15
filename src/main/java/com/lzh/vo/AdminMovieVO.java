@@ -4,9 +4,12 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 public class AdminMovieVO {
+
+    private Long id;
     /** 电影名称 */
     private String title;
 
@@ -40,13 +43,15 @@ public class AdminMovieVO {
     /** 剧情简介 */
     private String summary;
 
-    /** 评分 */
-    private BigDecimal rating;
+    /** 评分总分 */
+    private BigDecimal ratingSum;
 
     /** 评分人数 */
     private Integer ratingCount;
 
     /** 状态：0-下架，1-上架 */
     private Integer status;
+
+    private LocalDateTime createTime;
 
 }
