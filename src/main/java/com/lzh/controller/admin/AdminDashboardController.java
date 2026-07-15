@@ -1,5 +1,7 @@
 package com.lzh.controller.admin;
 
+import com.lzh.service.IAdminDashboardService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,4 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admins/dashboard")
 public class AdminDashboardController {
+
+    @Resource
+    private IAdminDashboardService adminDashboardService;
+
 }
