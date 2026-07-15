@@ -97,7 +97,6 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
         return Result.ok(result);
     }
-
     @Override
     public Result listHotMovies() {
         String key = RedisConstants.HOT_MOVIE_KEY;

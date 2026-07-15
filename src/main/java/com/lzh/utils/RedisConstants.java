@@ -36,7 +36,6 @@ public class RedisConstants {
     /**影评*/
     public static final String LIKE_REVIEW_KEY = "review:like:";
     public static final String HOT_REVIEW_KEY = "review:hot:";
-
     /**电影*/
     public static final String MOVIE_INFO_KEY = "movie:info:";
     public static final Long MOVIE_INFO_TTL = 25L;
@@ -45,4 +44,6 @@ public class RedisConstants {
     /** 评论 */
     public static final String LIKE_COMMENT_KEY = "comment:like:";
     public static final Long LIKE_COMMENT_EMPTY_TTL = 20L;
+    /** dashboard统计*/
+    public static final String ADMIN_DASHBOARD_KEY = "admin:dashboard:";
 }
