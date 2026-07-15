@@ -102,10 +102,10 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
             return Result.fail("修改失败");
         }
         if(SystemConstants.MOVIE_STATUS_NORMAL.equals(status)){
-            log.info("管理员{}上架了电影{}",adminId,id);
+            log.info("管理员{}下架了电影{}",adminId,id);
         }
         else{
-            log.info("管理员{}下架了电影{}",adminId,id);
+            log.info("管理员{}上架了电影{}",adminId,id);
         }
         return Result.ok();
     }
