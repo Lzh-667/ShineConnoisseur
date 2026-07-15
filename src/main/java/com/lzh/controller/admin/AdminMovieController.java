@@ -29,4 +29,8 @@ public class AdminMovieController {
     ){
         return adminMovieService.updateMovie(movieDTO,id);
     }
+    @PutMapping("/status/{id}")
+    public Result updateMovieStatus(@PathVariable("id") Long id){
+        return adminMovieService.updateMovieStatus(id);
+    }
 }

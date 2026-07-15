@@ -5,8 +5,10 @@ import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.dto.AdminMovieDTO;
 import com.lzh.po.Movie;
+import com.lzh.po.Review;
 import com.lzh.service.IAdminMovieService;
 import com.lzh.service.IMovieService;
+import com.lzh.utils.AdminHolder;
 import com.lzh.utils.SystemConstants;
 import com.lzh.vo.AdminMovieVO;
 import jakarta.annotation.Resource;
@@ -71,6 +73,36 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
         if(!success){
             log.info("修改电影失败");
             return Result.fail("修改电影失败");
+        }
+        return Result.ok();
+    }
+    @Override
+    public Result updateMovieStatus(Long id) {
+        Long adminId = AdminHolder.getAdmin().getId();
+        //1.判断电影是否存在
+       Movie movie = movieService.getById(id);
+        if(movie==null){
+            return Result.fail("电影不存在");
+        }
+        //2.获取影评当前状态
+        Integer status = movie.getStatus();
+        //3.修改数据
+        Integer newStatus =  SystemConstants.MOVIE_STATUS_NORMAL.equals(status)
+                ? SystemConstants.MOVIE_STATUS_BAN
+                : SystemConstants.MOVIE_STATUS_NORMAL;
+        boolean success = movieService.update()
+                .set("status", newStatus)
+                .eq("id", id)
+                .update();
+        if(!success){
+            log.info("管理员{}修改电影状态失败,movieId={}",adminId,id);
+            return Result.fail("修改失败");
+        }
+        if(SystemConstants.MOVIE_STATUS_NORMAL.equals(status)){
+            log.info("管理员{}上架了电影{}",adminId,id);
+        }
+        else{
+            log.info("管理员{}下架了电影{}",adminId,id);
         }
         return Result.ok();
     }

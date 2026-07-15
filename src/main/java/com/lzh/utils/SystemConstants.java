@@ -25,4 +25,7 @@ public class SystemConstants {
 
     public static final Integer COMMENT_STATUS_BAN = 0;
     public static final Integer COMMENT_STATUS_NORMAL = 1;
+
+    public static final Integer MOVIE_STATUS_NORMAL = 1;
+    public static final Integer MOVIE_STATUS_BAN = 0;
 }

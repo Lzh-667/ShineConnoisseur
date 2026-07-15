@@ -9,4 +9,6 @@ public interface IAdminMovieService {
     Result updateMovie(AdminMovieDTO movieDTO,Long id);
 
     Result listMovies(Long current);
+
+    Result updateMovieStatus(Long id);
 }
