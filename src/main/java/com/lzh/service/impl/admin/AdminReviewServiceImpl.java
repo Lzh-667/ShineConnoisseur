@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.po.Review;
+import com.lzh.po.User;
 import com.lzh.service.IAdminReviewService;
 import com.lzh.service.IReviewService;
+import com.lzh.utils.AdminHolder;
 import com.lzh.utils.SystemConstants;
 import com.lzh.vo.AdminReviewVO;
 import jakarta.annotation.Resource;
@@ -41,5 +43,36 @@ public class AdminReviewServiceImpl implements IAdminReviewService {
         result.setTotal(page.getTotal());
         result.setRecords(vos);
         return Result.ok(result);
+    }
+
+    @Override
+    public Result updateReviewStatus(Long id) {
+        Long adminId = AdminHolder.getAdmin().getId();
+        //1.判断影评是否存在
+        Review review = reviewService.getById(id);
+        if(review==null){
+            return Result.fail("影评不存在");
+        }
+        //2.获取影评当前状态
+        Integer status = review.getStatus();
+        //3.修改数据
+        Integer newStatus =  SystemConstants.REVIEW_STATUS_NORMAL.equals(status)
+                ? SystemConstants.REVIEW_STATUS_BAN
+                : SystemConstants.REVIEW_STATUS_NORMAL;
+        boolean success = reviewService.update()
+                .set("status", newStatus)
+                .eq("id", id)
+                .update();
+        if(!success){
+            log.info("管理员{}修改影评状态失败,reviewId={}",adminId,id);
+            return Result.fail("修改失败");
+        }
+        if(SystemConstants.REVIEW_STATUS_NORMAL.equals(status)){
+            log.info("管理员{}禁用了影评{}",adminId,id);
+        }
+        else{
+            log.info("管理员{}解封了影评{}",adminId,id);
+        }
+        return Result.ok();
     }
 }
