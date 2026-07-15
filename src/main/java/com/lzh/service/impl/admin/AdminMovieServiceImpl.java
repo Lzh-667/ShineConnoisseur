@@ -5,7 +5,6 @@ import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.dto.AdminMovieDTO;
 import com.lzh.po.Movie;
-import com.lzh.po.Review;
 import com.lzh.service.IAdminMovieService;
 import com.lzh.service.IMovieService;
 import com.lzh.utils.AdminHolder;
