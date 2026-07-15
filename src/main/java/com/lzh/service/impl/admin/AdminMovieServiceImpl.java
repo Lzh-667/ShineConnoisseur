@@ -46,6 +46,7 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
     }
     @Override
     public Result publishMovie(AdminMovieDTO movieDTO) {
+        Long adminId = AdminHolder.getAdmin().getId();
         //1.将dto转化为movie
         Movie movie = new Movie();
         BeanUtils.copyProperties(movieDTO,movie);
@@ -55,10 +56,12 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
             log.info("添加电影失败");
             return Result.fail("添加电影失败");
         }
+        log.info("管理员{}发布了电影{}",adminId,movie.getId());
         return Result.ok();
     }
     @Override
     public Result updateMovie(AdminMovieDTO movieDTO,Long movieId) {
+        Long adminId = AdminHolder.getAdmin().getId();
         if(movieService.getById(movieId) == null){
             log.info("电影不存在");
             return Result.fail("电影不存在");
@@ -70,9 +73,10 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
         //2.修改数据
         boolean success = movieService.updateById(movie);
         if(!success){
-            log.info("修改电影失败");
+            log.info("管理员{}修改电影{}信息失败",adminId,movieId);
             return Result.fail("修改电影失败");
         }
+        log.info("管理员{}修改了电影{}信息",adminId,movieId);
         return Result.ok();
     }
     @Override
