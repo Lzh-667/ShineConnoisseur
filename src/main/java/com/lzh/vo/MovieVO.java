@@ -47,7 +47,4 @@ public class MovieVO {
     /** 评分人数 */
     private Integer ratingCount;
 
-    /** 状态：0-下架，1-上架 */
-    private Integer status;
-
 }

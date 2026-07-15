@@ -51,7 +51,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         }
         //2.查数据库，判断电影是否存在
         Movie movie = getById(movieId);
-        if (movie == null) {
+        if (movie == null||!movie.getStatus().equals(SystemConstants.MOVIE_STATUS_NORMAL)) {
             stringRedisTemplate.opsForValue().set(key, "", 5, TimeUnit.MINUTES);
             return Result.fail("电影不存在");
         }
@@ -81,6 +81,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                 .like(StrUtil.isNotBlank(title),"title", title)
                 .eq(StrUtil.isNotBlank(genre),"genre", genre)
                 .eq(StrUtil.isNotBlank(region),"region", region)
+                .eq("status", SystemConstants.MOVIE_STATUS_NORMAL)
                 .orderByDesc("release_date")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
@@ -113,6 +114,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     public void updateHotMovieCache(){
         //1. 查询热门电影
         List<Movie> movies = query()
+                .eq("status", SystemConstants.MOVIE_STATUS_NORMAL)
                 .orderByDesc("rating_count")
                 .orderByDesc("rating_sum")
                 .orderByDesc("release_date")
