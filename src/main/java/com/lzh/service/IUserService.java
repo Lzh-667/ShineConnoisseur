@@ -5,7 +5,6 @@ import com.lzh.common.Result;
 import com.lzh.dto.LoginFormDTO;
 import com.lzh.dto.RegisterFormDTO;
 import com.lzh.po.User;
-import jakarta.servlet.http.HttpSession;
 
 public interface IUserService extends IService<User> {
     Result sendLoginCode(String phone);
