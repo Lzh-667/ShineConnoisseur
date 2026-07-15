@@ -1,0 +1,42 @@
+package com.lzh.dto;
+
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Data
+public class AdminMovieDTO {
+    /** 电影名称 */
+    private String title;
+
+    /** 原名（外文） */
+    private String originalTitle;
+
+    /** 海报URL */
+    private String cover;
+
+    /** 导演，逗号分隔 */
+    private String director;
+
+    /** 演员，逗号分隔 */
+    private String actors;
+
+    /** 类型，逗号分隔 */
+    private String genre;
+
+    /** 地区 */
+    private String region;
+
+    /** 语言 */
+    private String language;
+
+    /** 上映日期 */
+    private LocalDate releaseDate;
+
+    /** 片长（分钟） */
+    private Integer duration;
+
+    /** 剧情简介 */
+    private String summary;
+
+}

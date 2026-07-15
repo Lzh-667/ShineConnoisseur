@@ -45,7 +45,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RabbitTemplate rabbitTemplate;
-
     @Transactional
     @Override
     public Result publishReview(ReviewDTO reviewDTO,Long movieId) {
@@ -76,7 +75,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
         return Result.ok();
     }
-
     @Override
     public Result listReview(Long movieId, Integer current) {
         //1.获取当前用户
@@ -114,8 +112,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds,userId);
         return Result.ok(reviewVOList);
     }
-
-
     @Override
     public Result myReviews(Integer current) {
         //1.获取当前用户
@@ -159,7 +155,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .toList();
         return Result.ok(reviewVOList);
     }
-
     @Transactional
     @Override
     public Result likeReview(Long reviewId) {
@@ -277,7 +272,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
         return (ids.contains(userId));
     }
-
     @Transactional
     @Override
     public Result updateReview(Long reviewId, ReviewDTO reviewDTO) {
@@ -318,7 +312,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             return Result.fail("修改失败");
         }
     }
-
     @Transactional
     @Override
     public Result deleteReview(Long reviewId) {
