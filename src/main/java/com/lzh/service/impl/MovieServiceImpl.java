@@ -157,7 +157,6 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                     );
         }
         stringRedisTemplate.rename(newKey, oldKey);
-        log.info("热门电影缓存刷新成功");
     }
 
     @Override

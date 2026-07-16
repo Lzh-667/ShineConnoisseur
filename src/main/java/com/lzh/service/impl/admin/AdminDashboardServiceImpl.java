@@ -51,11 +51,15 @@ public class AdminDashboardServiceImpl implements IAdminDashboardService {
         map.put("weekReviewCount", String.valueOf(vo.getWeekReviewCount()));
         map.put("updateTime", String.valueOf(vo.getUpdateTime()));
         //2.写入redis
+        String oldKey = RedisConstants.ADMIN_DASHBOARD_KEY;
+        String newKey = oldKey + ":temp";
+        stringRedisTemplate.delete(newKey);
         stringRedisTemplate.opsForHash()
                 .putAll(
                         RedisConstants.ADMIN_DASHBOARD_KEY,
                         map
                 );
+        stringRedisTemplate.rename(newKey, oldKey);
     }
     @Override
     public Result dashboard() {
