@@ -11,12 +11,12 @@ import com.lzh.dto.AdminLoginDTO;
 import com.lzh.mapper.AdminMapper;
 import com.lzh.po.Admin;
 import com.lzh.service.IAdminService;
-import com.lzh.utils.PasswordEncoder;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -29,6 +29,8 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private PasswordEncoder passwordEncoder;
     @Override
     public Result login(AdminLoginDTO adminLoginDTO) {
         //1.获取用户名和密码
@@ -50,7 +52,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         }
         //4.根据用户名和密码查询
         Admin admin = query().eq("username", adminName).one();
-        if (admin == null || !PasswordEncoder.matches(password, admin.getPassword())) {
+        if (admin == null || !passwordEncoder.matches(password, admin.getPassword())) {
             Long count = stringRedisTemplate.opsForValue().increment(errorKey);
             if(Long.valueOf(1L).equals( count)){
                 stringRedisTemplate.expire(

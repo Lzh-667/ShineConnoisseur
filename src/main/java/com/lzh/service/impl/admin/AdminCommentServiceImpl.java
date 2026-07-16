@@ -27,7 +27,6 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
     private IReviewCommentService reviewCommentService;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
-
     @Override
     public Result listComments(Long current) {
         //1.查询评论列表

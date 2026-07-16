@@ -13,7 +13,6 @@ import com.lzh.dto.UserDTO;
 import com.lzh.mapper.UserMapper;
 import com.lzh.po.User;
 import com.lzh.service.IUserService;
-import com.lzh.utils.PasswordEncoder;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
 import com.lzh.utils.SystemConstants;
@@ -22,6 +21,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -34,6 +34,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private PasswordEncoder passwordEncoder;
     @Override
     public Result sendLoginCode(String phone) {
         //1.验证手机号
@@ -128,7 +130,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         //4.根据用户名和密码查询
         User user = query().eq("username", username).eq("status", SystemConstants.USER_STATUS_NORMAL).one();
-        if (user == null || !PasswordEncoder.matches(password, user.getPassword())) {
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             Long count = stringRedisTemplate.opsForValue().increment(errorKey);
             if(Long.valueOf(1L).equals( count)){
                 stringRedisTemplate.expire(
@@ -215,7 +217,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //8.创建用户
         User newUser = new User();
         newUser.setUsername(username);
-        newUser.setPassword(PasswordEncoder.encode(password));
+        newUser.setPassword(passwordEncoder.encode(password));
         newUser.setEmail(email);
         newUser.setPhone(phone);
         newUser.setNickname(username+RandomUtil.randomNumbers(4));
