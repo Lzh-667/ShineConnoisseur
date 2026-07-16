@@ -170,6 +170,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
         //3.判断是点赞还是取消点赞
         boolean Liked = isLike(reviewId, userId);
+        String key = RedisConstants.LIKE_REVIEW_KEY + reviewId;
         if (Liked) {
             //3.1.取消点赞
             //删除数据
@@ -188,7 +189,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 }
                 log.info("取消点赞成功");
                 //移除缓存
-                stringRedisTemplate.opsForSet().remove(RedisConstants.LIKE_REVIEW_KEY + reviewId, userId.toString());
+                stringRedisTemplate.opsForSet().remove(key, userId.toString());
+                Long size = stringRedisTemplate.opsForSet().size(key);
+                if(Objects.equals(size, 0L)){
+                    stringRedisTemplate.delete(key);
+                }
             }
             else{
                 log.info("取消点赞失败");
@@ -226,7 +231,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 }
                 log.info("点赞成功");
                 //移除缓存
-                stringRedisTemplate.opsForSet().add(RedisConstants.LIKE_REVIEW_KEY + reviewId, userId.toString());
+                stringRedisTemplate.opsForSet().add(key, userId.toString());
                 // 发送点赞消息
                 MessageDTO dto = new MessageDTO();
                 Long id = query().eq("id", reviewId).select("user_id").one().getUserId();
