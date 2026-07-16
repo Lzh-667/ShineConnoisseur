@@ -10,6 +10,7 @@ import com.lzh.dto.ReviewCommentDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.po.LikeRecord;
+import com.lzh.po.Review;
 import com.lzh.po.ReviewComment;
 import com.lzh.po.User;
 import com.lzh.service.ILikeRecordService;
@@ -62,7 +63,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         //3.如果是回复需要校验rootId
         if(reviewComment.getRootId()!=null && reviewComment.getRootId()!=0){
             ReviewComment rootComment = getById(reviewComment.getRootId());
-            if(rootComment == null){
+            if(rootComment == null|| !rootComment.getStatus().equals(SystemConstants.COMMENT_STATUS_NORMAL)){
                 return Result.fail("评论不存在");
             }
             if(!rootComment.getReviewId().equals(reviewId)){
@@ -110,6 +111,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Override
     public Result listRootReviewComment(Long reviewId, Integer current) {
+        Review review = reviewService.getById(reviewId);
+        if(review == null|| !review.getStatus().equals(SystemConstants.REVIEW_STATUS_NORMAL)){
+            return Result.fail("评论不存在");
+        }
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.查询一级评论
@@ -161,6 +166,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Override
     public Result listChildReviewComment(Long rootId, Integer current) {
+        ReviewComment rootComment = getById(rootId);
+        if(rootComment == null|| !rootComment.getStatus().equals(SystemConstants.COMMENT_STATUS_NORMAL)){
+            return Result.fail("评论不存在");
+        }
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.查询子评论
@@ -217,7 +226,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.防止点赞不存在的评论
-        if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId))){
+        if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId).eq("status",SystemConstants.COMMENT_STATUS_NORMAL))){
             return Result.fail("点赞的影评不存在");
         }
         //3.判断是否已点赞
@@ -313,7 +322,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Long userId = UserHolder.getUser().getId();
         //2.确认权限
         ReviewComment comment = getById(reviewCommentId);
-        if(comment==null){
+        if(comment==null||!comment.getStatus().equals(SystemConstants.COMMENT_STATUS_NORMAL)){
             return Result.fail("评论不存在");
         }
         if (!comment.getUserId().equals(userId)) {
