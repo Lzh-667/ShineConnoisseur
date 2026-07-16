@@ -225,11 +225,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     public Result likeReviewComment(Long reviewCommentId) {
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.防止点赞不存在的评论
-        if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId).eq("status",SystemConstants.COMMENT_STATUS_NORMAL))){
-            return Result.fail("点赞的影评不存在");
-        }
-        //3.判断是否已点赞
+        //2.判断是否已点赞
         boolean Liked = isLike(reviewCommentId, userId);
         String commentKey = RedisConstants.LIKE_COMMENT_KEY + reviewCommentId;
         if(Liked){
@@ -252,10 +248,6 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 log.info("取消点赞成功");
                 //移除缓存
                 stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
-                Long size = stringRedisTemplate.opsForSet().size(commentKey);
-                if(Objects.equals(size, 0L)){
-                    stringRedisTemplate.delete(commentKey);
-                }
             }
             else{
                 log.info("取消点赞失败");
@@ -267,6 +259,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             return Result.ok(likeVO);
         }else{
             //3.2.点赞
+            //防止点赞不存在的评论
+            if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId).eq("status",SystemConstants.COMMENT_STATUS_NORMAL))){
+                return Result.fail("点赞的影评不存在");
+            }
             //防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
@@ -291,6 +287,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new RuntimeException("点赞失败");
                 }
                 log.info("点赞成功");
+                //增添缓存
                 stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
                 // 发送点赞消息
                 MessageDTO dto = new MessageDTO();

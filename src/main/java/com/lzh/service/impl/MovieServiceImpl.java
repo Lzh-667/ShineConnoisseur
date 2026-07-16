@@ -192,6 +192,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     public Result favoriteMovie(Long movieId, Boolean isFavorite) {
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
+        String key = RedisConstants.MOVIE_FAVORITE_KEY + movieId;
         //2.判断是收藏还是取消收藏
         if (isFavorite) {
             //3.1.取消收藏
@@ -203,7 +204,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
             if(isSuccess){
                 log.info("取消收藏成功");
                 //移除缓存
-                stringRedisTemplate.delete(RedisConstants.MOVIE_FAVORITE_KEY + movieId);
+                stringRedisTemplate.opsForSet().remove(key, userId.toString());
             }
             else{
                 log.info("取消收藏失败");
@@ -213,7 +214,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         else{
             //3.2.收藏
             //防止收藏不存在的电影
-            if(!exists(new QueryWrapper<Movie>().eq("id",movieId))){
+            if(!exists(new QueryWrapper<Movie>().eq("id",movieId).eq("status",SystemConstants.MOVIE_STATUS_NORMAL))){
                 return Result.fail("收藏的电影不存在");
             }
             //防止重复收藏
@@ -231,8 +232,8 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
             boolean isSuccess = movieFavoriteService.save(movieFavorite);
             if (isSuccess) {
                 log.info("收藏成功");
-                //移除缓存
-                stringRedisTemplate.delete(RedisConstants.MOVIE_FAVORITE_KEY + movieId);
+                //增添缓存
+                stringRedisTemplate.opsForSet().add(key, userId.toString());
             }
             else{
                 log.info("收藏失败");

@@ -164,11 +164,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     public Result likeReview(Long reviewId) {
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.防止点赞不存在的影评
-        if(!exists(new QueryWrapper<Review>().eq("id",reviewId).eq("status",SystemConstants.REVIEW_STATUS_NORMAL))){
-            return Result.fail("点赞的影评不存在");
-        }
-        //3.判断是点赞还是取消点赞
+        //2.判断是点赞还是取消点赞
         boolean Liked = isLike(reviewId, userId);
         String key = RedisConstants.LIKE_REVIEW_KEY + reviewId;
         if (Liked) {
@@ -190,10 +186,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 log.info("取消点赞成功");
                 //移除缓存
                 stringRedisTemplate.opsForSet().remove(key, userId.toString());
-                Long size = stringRedisTemplate.opsForSet().size(key);
-                if(Objects.equals(size, 0L)){
-                    stringRedisTemplate.delete(key);
-                }
             }
             else{
                 log.info("取消点赞失败");
@@ -206,6 +198,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
         else{
             //3.2.点赞
+            //防止点赞不存在的影评
+            if(!exists(new QueryWrapper<Review>().eq("id",reviewId).eq("status",SystemConstants.REVIEW_STATUS_NORMAL))){
+                return Result.fail("点赞的影评不存在");
+            }
             //防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
@@ -230,7 +226,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new RuntimeException("更新点赞数量失败");
                 }
                 log.info("点赞成功");
-                //移除缓存
+                //增添缓存
                 stringRedisTemplate.opsForSet().add(key, userId.toString());
                 // 发送点赞消息
                 MessageDTO dto = new MessageDTO();
