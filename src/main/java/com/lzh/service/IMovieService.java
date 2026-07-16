@@ -6,7 +6,7 @@ import com.lzh.po.Movie;
 
 public interface IMovieService extends IService<Movie> {
 
-    Result getMovieInfo(Long movieId) throws InterruptedException;
+    Result getMovieInfo(Long movieId);
 
     Result listMovies(Long current, String name, String genre, String region);
 

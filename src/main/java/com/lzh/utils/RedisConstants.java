@@ -39,8 +39,7 @@ public class RedisConstants {
     /**电影*/
     public static final String MOVIE_INFO_KEY = "movie:info:";
     public static final Long MOVIE_INFO_TTL = 30L;
-    public static final Long MOVIE_INFO_EMPTY_TTL = 5L;
-    public static final String MOVIE_LOCK = "movie:lock:";
+    public static final Long MOVIE_INFO_EMPTY_TTL = 10L;
     public static final String HOT_MOVIE_KEY = "movie:hot:";
     public static final String MOVIE_FAVORITE_KEY = "movie:favorite:";
     /** 评论 */
