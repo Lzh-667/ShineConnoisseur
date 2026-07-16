@@ -56,7 +56,7 @@ public class AdminDashboardServiceImpl implements IAdminDashboardService {
         stringRedisTemplate.delete(newKey);
         stringRedisTemplate.opsForHash()
                 .putAll(
-                        RedisConstants.ADMIN_DASHBOARD_KEY,
+                        newKey,
                         map
                 );
         stringRedisTemplate.rename(newKey, oldKey);
