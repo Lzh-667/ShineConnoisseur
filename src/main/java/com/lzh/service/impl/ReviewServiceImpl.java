@@ -249,7 +249,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             return Result.ok(likeVO);
         }
     }
-
     public boolean isLike(Long reviewId,Long userId) {
         //2.查redis
         String reviewKey = RedisConstants.LIKE_REVIEW_KEY + reviewId;
