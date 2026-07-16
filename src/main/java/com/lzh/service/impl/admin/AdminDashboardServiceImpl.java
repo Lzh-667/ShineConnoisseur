@@ -33,6 +33,7 @@ public class AdminDashboardServiceImpl implements IAdminDashboardService {
         vo.setUserCount(userService.count());
         vo.setMovieCount(movieService.count());
         vo.setReviewCount(reviewService.count());
+        vo.setUpdateTime(LocalDateTime.now());
 
         LocalDateTime today = LocalDate.now().atStartOfDay();
         vo.setTodayReviewCount(reviewService.query().ge("create_time",today).count());
@@ -52,7 +53,8 @@ public class AdminDashboardServiceImpl implements IAdminDashboardService {
         Map<Object,Object> map = stringRedisTemplate.opsForHash().entries(RedisConstants.ADMIN_DASHBOARD_KEY);
         //2.不存在，不符合正常情况，返回异常
         if (map.isEmpty()) {
-            return Result.fail("服务器异常");
+            refreshDashboardCache();
+            map = stringRedisTemplate.opsForHash().entries(RedisConstants.ADMIN_DASHBOARD_KEY);
         }
         //3.返回数据
         AdminDashboardVO vo = BeanUtil.fillBeanWithMap(

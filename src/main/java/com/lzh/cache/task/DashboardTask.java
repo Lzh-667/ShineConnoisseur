@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class DashboardTask {
     @Resource
     private IAdminDashboardService adminDashboardService;
-    @Scheduled(cron = "0 0 6 * * ?")
+    @Scheduled(cron = "0 0 * * * ?")
     public void refreshDashboardCache(){
         try {
             adminDashboardService.refreshDashboardCache();
