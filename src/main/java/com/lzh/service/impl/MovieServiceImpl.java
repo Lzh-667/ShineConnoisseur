@@ -27,7 +27,12 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -101,13 +106,31 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     public Result listHotMovies() {
         String key = RedisConstants.HOT_MOVIE_KEY;
         //1.查Redis
-        String json = stringRedisTemplate.opsForValue().get(key);
+        Set<String> ids = stringRedisTemplate.opsForZSet().reverseRange(key, 0, 9);
         //2.不存在,不符合正常情况，返回失败
-        if(json == null){
+        if(ids == null||ids.isEmpty()){
             return Result.fail("服务器异常");
         }
-        //3.返回热门电影
-        return Result.ok(JSONUtil.toList(json, MovieSimpleVO.class));
+        //3.根据id查询电影
+        List<Long> movieIds = ids.stream()
+                .map(Long::valueOf)
+                .toList();
+        List<Movie> movies = listByIds(movieIds);
+        //4.保证Redis中的排序
+        Map<Long, Movie> movieMap = movies.stream()
+                .collect(Collectors.toMap(
+                        Movie::getId,
+                        Function.identity()
+                ));
+        List<MovieSimpleVO> vos = movieIds.stream()
+                .map(movieMap::get)
+                .filter(Objects::nonNull)
+                .map(movie -> BeanUtil.copyProperties(
+                        movie,
+                        MovieSimpleVO.class
+                ))
+                .toList();
+        return Result.ok(vos);
     }
     @Override
     public void updateHotMovieCache(){
@@ -119,12 +142,21 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                 .orderByDesc("release_date")
                 .last("limit 10")
                 .list();
-        //2. 转VO
-        List<MovieSimpleVO> vos = movies.stream()
-                .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
-                .toList();
-        //3. 写入Redis
-        stringRedisTemplate.opsForValue().set(RedisConstants.HOT_MOVIE_KEY, JSONUtil.toJsonStr(vos));
+        //2.写入redis
+        String oldKey = RedisConstants.HOT_MOVIE_KEY;
+        String newKey = oldKey + ":temp";
+        stringRedisTemplate.delete(newKey);
+        for(Movie movie : movies){
+            String value = movie.getId().toString();
+            double score = movie.getRatingCount()*10 + movie.getRatingSum().doubleValue();
+            stringRedisTemplate.opsForZSet()
+                    .add(
+                            newKey,
+                            value,
+                            score
+                    );
+        }
+        stringRedisTemplate.rename(newKey, oldKey);
         log.info("热门电影缓存刷新成功");
     }
 
