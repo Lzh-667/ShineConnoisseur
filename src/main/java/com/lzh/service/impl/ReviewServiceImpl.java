@@ -49,7 +49,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     @Override
     public Result publishReview(ReviewDTO reviewDTO,Long movieId) {
         Movie movie = movieService.getById(movieId);
-        if (movie == null|| !movie.getStatus().equals(SystemConstants.MOVIE_STATUS_NORMAL)) {
+        if (movie == null|| !Objects.equals(movie.getStatus(), SystemConstants.MOVIE_STATUS_NORMAL)) {
             return Result.fail("电影不存在");
         }
         //1.获取当前用户
@@ -86,7 +86,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         //2.根据movieId查询movie
         Movie movie = movieService.getById(movieId);
         //3.判断movie是否存在
-        if (movie == null|| !movie.getStatus().equals(SystemConstants.MOVIE_STATUS_NORMAL)) {
+        if (movie == null|| !Objects.equals(movie.getStatus(), SystemConstants.MOVIE_STATUS_NORMAL)) {
             return Result.fail("电影不存在");
         }
         //4.查询影评列表
@@ -283,7 +283,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         Long userId = UserHolder.getUser().getId();
         //2.确认权限
         Review review = getById(reviewId);
-        if(review==null||!review.getStatus().equals(SystemConstants.REVIEW_STATUS_NORMAL)){
+        if(review==null||!Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("影评不存在");
         }
         Integer oldRating = review.getRating();
@@ -323,7 +323,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         Long userId = UserHolder.getUser().getId();
         //2.确认权限
         Review review = getById(reviewId);
-        if(review==null||!review.getStatus().equals(SystemConstants.REVIEW_STATUS_NORMAL)){
+        if(review==null||!Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("影评不存在");
         }
         Integer oldRating = review.getRating();

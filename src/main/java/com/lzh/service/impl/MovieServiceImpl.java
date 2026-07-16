@@ -21,6 +21,10 @@ import com.lzh.vo.MovieSimpleVO;
 import com.lzh.vo.MovieVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -42,41 +46,57 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private IMovieFavoriteService movieFavoriteService;
+    @Resource
+    private RedissonClient redissonClient;
+
     @Override
     public Result getMovieInfo(Long movieId) {
         //1.判断redis中是否存在
         String key = RedisConstants.MOVIE_INFO_KEY + movieId;
         String movieJson = stringRedisTemplate.opsForValue().get(key);
         if(movieJson != null){
-            if(movieJson.isEmpty()){
+            if("empty".equals(movieJson)){
                 return Result.fail("电影不存在");
             }
             MovieVO movieVO = JSONUtil.toBean(movieJson, MovieVO.class);
             return Result.ok(movieVO);
         }
-        //2.查数据库，判断电影是否存在
-        Movie movie = getById(movieId);
-        if (movie == null||!movie.getStatus().equals(SystemConstants.MOVIE_STATUS_NORMAL)) {
-            stringRedisTemplate.opsForValue().set(key, "", 5, TimeUnit.MINUTES);
-            return Result.fail("电影不存在");
+        //2.获取锁
+        RLock lock = redissonClient.getLock(RedisConstants.MOVIE_LOCK + movieId);
+        try {
+            //3.加锁
+            lock.lock();
+            //4.双重检查
+            movieJson = stringRedisTemplate.opsForValue().get(key);
+            if(movieJson != null){
+                return Result.ok(JSONUtil.toBean(movieJson,MovieVO.class));
+            }
+            //5.查数据库
+            Movie movie = getById(movieId);
+            if(movie == null){
+                stringRedisTemplate.opsForValue().set(key, "empty", RedisConstants.MOVIE_INFO_EMPTY_TTL, TimeUnit.MINUTES);
+                return Result.fail("电影不存在");
+            }
+            MovieVO vo = BeanUtil.copyProperties(movie, MovieVO.class);
+            if(movie.getRatingCount()>0){
+                BigDecimal rating = movie.getRatingSum()
+                        .divide(
+                                BigDecimal.valueOf(movie.getRatingCount()),
+                                1,
+                                RoundingMode.HALF_UP
+                        );
+                vo.setRating(rating);
+            }else{
+                vo.setRating(BigDecimal.ZERO);
+            }
+            //6.写缓存
+            long ttl = RedisConstants.MOVIE_INFO_TTL + RandomUtil.randomInt(10);
+            stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(vo), ttl, TimeUnit.MINUTES);
+            return Result.ok(vo);
+        }finally {
+            //7.释放锁
+            lock.unlock();
         }
-        //3.转化为VO并返回
-        MovieVO movieVO = BeanUtil.copyProperties(movie, MovieVO.class);
-        if(movie.getRatingCount()>0){
-            BigDecimal rating = movie.getRatingSum()
-                    .divide(
-                            BigDecimal.valueOf(movie.getRatingCount()),
-                            1,
-                            RoundingMode.HALF_UP
-                    );
-            movieVO.setRating(rating);
-        }else{
-            movieVO.setRating(BigDecimal.ZERO);
-        }
-        //4.写入redis
-        long ttl = RedisConstants.MOVIE_INFO_TTL + RandomUtil.randomInt(5);
-        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(movieVO), ttl, TimeUnit.MINUTES);
-        return Result.ok(movieVO);
     }
 
     @Override
