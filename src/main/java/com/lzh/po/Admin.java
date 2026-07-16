@@ -31,15 +31,6 @@ public class Admin {
     /** 头像 */
     private String avatar;
 
-    /** 状态：0-禁用 1-正常 */
-    private Integer status;
-
-    /** 权限等级：
-     * 0-普通管理员
-     * 1-超级管理员
-     */
-    private Integer role;
-
     /** 最后登录时间 */
     private LocalDateTime lastLoginTime;
 

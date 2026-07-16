@@ -9,5 +9,4 @@ public class AdminDTO {
     private String username;
     private String realName;
     private String avatar;
-    private Integer role;
 }

@@ -63,7 +63,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         //3.如果是回复需要校验rootId
         if(reviewComment.getRootId()!=null && reviewComment.getRootId()!=0){
             ReviewComment rootComment = getById(reviewComment.getRootId());
-            if(rootComment == null|| !rootComment.getStatus().equals(SystemConstants.COMMENT_STATUS_NORMAL)){
+            if(rootComment == null|| !Objects.equals(rootComment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
                 return Result.fail("评论不存在");
             }
             if(!rootComment.getReviewId().equals(reviewId)){
@@ -112,7 +112,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     @Override
     public Result listRootReviewComment(Long reviewId, Integer current) {
         Review review = reviewService.getById(reviewId);
-        if(review == null|| !review.getStatus().equals(SystemConstants.REVIEW_STATUS_NORMAL)){
+        if(review == null|| !Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("评论不存在");
         }
         //1.获取当前用户
@@ -167,7 +167,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     @Override
     public Result listChildReviewComment(Long rootId, Integer current) {
         ReviewComment rootComment = getById(rootId);
-        if(rootComment == null|| !rootComment.getStatus().equals(SystemConstants.COMMENT_STATUS_NORMAL)){
+        if(rootComment == null|| !Objects.equals(rootComment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
             return Result.fail("评论不存在");
         }
         //1.获取当前用户
@@ -322,7 +322,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Long userId = UserHolder.getUser().getId();
         //2.确认权限
         ReviewComment comment = getById(reviewCommentId);
-        if(comment==null||!comment.getStatus().equals(SystemConstants.COMMENT_STATUS_NORMAL)){
+        if(comment==null||!Objects.equals(comment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
             return Result.fail("评论不存在");
         }
         if (!comment.getUserId().equals(userId)) {

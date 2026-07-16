@@ -59,7 +59,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 return Result.ok(getUserDTOS(ids));
             }
         }
-
         // redis没数据
         // 3. 查数据库重建缓存
         List<Long> ids = query()
@@ -152,12 +151,15 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     @Transactional
     @Override
     public Result follow(Long id, Boolean isFollow) {
+        // 防止关注不存在的用户
+        if (!userService.exists(new QueryWrapper<User>().eq("id", id).eq("status", SystemConstants.USER_STATUS_NORMAL))) {
+            return Result.fail("用户不存在");
+        }
         // 1. 获取当前用户id并判断是否为自己
         Long userId = UserHolder.getUser().getId();
         if (userId.equals(id)) {
             return Result.fail("不能关注自己");
         }
-
         // 2. 判断关注还是取关
         if (!isFollow) {
             // 防止重复关注
@@ -168,12 +170,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
             if (exist) {
                 return Result.fail("不能重复关注");
             }
-
-            // 防止关注不存在的用户
-            if (!userService.exists(new QueryWrapper<User>().eq("id", id))) {
-                return Result.fail("用户不存在");
-            }
-
             // 3.1. 关注，新增数据
             UserFollow userFollow = new UserFollow();
             userFollow.setUserId(userId);
@@ -217,7 +213,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
             boolean isSuccess = remove(new QueryWrapper<UserFollow>()
                     .eq("user_id", userId)
                     .eq("follow_user_id", id));
-
             if (isSuccess) {
                 // 减少关注者的关注数和被关注者的粉丝数
                 boolean isSuccess1 =userService.update()
@@ -243,7 +238,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         }
         return Result.ok();
     }
-
     @Override
     public Result isFollow(Long id) {
         // 1. 获取当前登录用户

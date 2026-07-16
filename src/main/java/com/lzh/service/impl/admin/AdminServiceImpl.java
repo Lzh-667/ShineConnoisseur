@@ -89,8 +89,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         stringRedisTemplate.expire(tokenKey,RedisConstants.ADMIN_LOGIN_TTL,TimeUnit.MINUTES);
         return token;
     }
-
-
     @Override
     public Result logout() {
         return Result.ok();

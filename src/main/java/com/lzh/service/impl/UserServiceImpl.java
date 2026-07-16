@@ -1,5 +1,6 @@
 package com.lzh.service.impl;
 
+import ch.qos.logback.core.net.SyslogConstants;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.UUID;
@@ -16,6 +17,7 @@ import com.lzh.service.IUserService;
 import com.lzh.utils.PasswordEncoder;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
+import com.lzh.utils.SystemConstants;
 import com.lzh.vo.UserInfo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -96,7 +98,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 验证成功后删除错误次数
         stringRedisTemplate.delete(errorKey);
         //5.一致，根据手机号查询用户
-        User user = query().eq("phone", phone).one();
+        User user = query().eq("phone", phone).eq("status",SystemConstants.USER_STATUS_NORMAL).one();
         //6.判断用户是否存在
         if(user == null){
             //7.不存在，返回错误信息
@@ -126,7 +128,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("错误次数过多，请稍后再试");
         }
         //4.根据用户名和密码查询
-        User user = query().eq("username", username).one();
+        User user = query().eq("username", username).eq("status", SystemConstants.USER_STATUS_NORMAL).one();
         if (user == null || !PasswordEncoder.matches(password, user.getPassword())) {
             Long count = stringRedisTemplate.opsForValue().increment(errorKey);
             if(Long.valueOf(1L).equals( count)){
