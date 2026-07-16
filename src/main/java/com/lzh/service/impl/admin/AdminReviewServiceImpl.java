@@ -7,12 +7,16 @@ import com.lzh.po.Review;
 import com.lzh.service.IAdminReviewService;
 import com.lzh.service.IReviewService;
 import com.lzh.utils.AdminHolder;
+import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.vo.AdminReviewVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -22,6 +26,9 @@ public class AdminReviewServiceImpl implements IAdminReviewService {
 
     @Resource
     private IReviewService reviewService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     @Override
     public Result listReviews(Long current) {
         //1.查询影评列表
@@ -44,6 +51,7 @@ public class AdminReviewServiceImpl implements IAdminReviewService {
         return Result.ok(result);
     }
 
+    @Transactional
     @Override
     public Result updateReviewStatus(Long id) {
         Long adminId = AdminHolder.getAdmin().getId();
@@ -68,6 +76,9 @@ public class AdminReviewServiceImpl implements IAdminReviewService {
         }
         if(SystemConstants.REVIEW_STATUS_NORMAL.equals(status)){
             log.info("管理员{}禁用了影评{}",adminId,id);
+            //删除缓存
+            stringRedisTemplate.opsForZSet().remove(RedisConstants.HOT_REVIEW_KEY,id.toString());
+            stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + id);
         }
         else{
             log.info("管理员{}解封了影评{}",adminId,id);

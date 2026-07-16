@@ -17,6 +17,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -86,6 +87,7 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
         return Result.ok();
     }
     @Override
+    @Transactional
     public Result updateMovieStatus(Long id) {
         Long adminId = AdminHolder.getAdmin().getId();
         //1.判断电影是否存在
@@ -110,11 +112,11 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
         if(SystemConstants.MOVIE_STATUS_NORMAL.equals(status)){
             //删除缓存
             stringRedisTemplate.delete(RedisConstants.MOVIE_INFO_KEY + id);
-
-            log.info("管理员{}下架了电影{}",adminId,id);
+            stringRedisTemplate.opsForZSet().remove(RedisConstants.HOT_MOVIE_KEY,id.toString());
+            log.info("管理员{}下架了电影,movieId={}",adminId,id);
         }
         else{
-            log.info("管理员{}上架了电影{}",adminId,id);
+            log.info("管理员{}上架了电影,movieId={}",adminId,id);
         }
         return Result.ok();
     }

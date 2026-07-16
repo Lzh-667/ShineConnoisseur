@@ -7,12 +7,16 @@ import com.lzh.po.ReviewComment;
 import com.lzh.service.IAdminCommentService;
 import com.lzh.service.IReviewCommentService;
 import com.lzh.utils.AdminHolder;
+import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.vo.AdminCommentVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -22,6 +26,9 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
 
     @Resource
     private IReviewCommentService reviewCommentService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     @Override
     public Result listComments(Long current) {
         //1.查询评论列表
@@ -44,6 +51,7 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
         return Result.ok(result);
     }
 
+    @Transactional
     @Override
     public Result updateCommentStatus(Long id) {
         Long adminId = AdminHolder.getAdmin().getId();
@@ -68,6 +76,8 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
         }
         if(SystemConstants.COMMENT_STATUS_NORMAL.equals(status)){
             log.info("管理员{}禁用了评论{}",adminId,id);
+            //删除缓存
+            stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY+id);
         }
         else{
             log.info("管理员{}解封了评论{}",adminId,id);

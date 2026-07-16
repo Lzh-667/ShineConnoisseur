@@ -353,6 +353,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                             .eq("target_type", SystemConstants.TARGET_REVIEW)
             );
             stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + reviewId);
+            stringRedisTemplate.opsForZSet().remove(RedisConstants.HOT_REVIEW_KEY,reviewId.toString());
             log.info("删除成功");
             return Result.ok();
         }
