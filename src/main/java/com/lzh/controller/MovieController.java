@@ -15,7 +15,7 @@ public class MovieController {
     private IMovieService movieService;
 
     @GetMapping("/{movieId}")
-    public Result getMovieInfo(@PathVariable("movieId") Long movieId){
+    public Result getMovieInfo(@PathVariable("movieId") Long movieId) throws InterruptedException {
         return movieService.getMovieInfo(movieId);
     }
     @GetMapping("/list")

@@ -50,7 +50,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     private RedissonClient redissonClient;
 
     @Override
-    public Result getMovieInfo(Long movieId) {
+    public Result getMovieInfo(Long movieId) throws InterruptedException {
         //1.判断redis中是否存在
         String key = RedisConstants.MOVIE_INFO_KEY + movieId;
         String movieJson = stringRedisTemplate.opsForValue().get(key);
@@ -63,17 +63,25 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         }
         //2.获取锁
         RLock lock = redissonClient.getLock(RedisConstants.MOVIE_LOCK + movieId);
+        boolean isLock = false;
         try {
             //3.加锁
-            lock.lock();
+            isLock = lock.tryLock(1, 10, TimeUnit.SECONDS);
+            if (!isLock) {
+                Thread.sleep(50);
+                return getMovieInfo(movieId);
+            }
             //4.双重检查
             movieJson = stringRedisTemplate.opsForValue().get(key);
             if(movieJson != null){
+                if("empty".equals(movieJson)){
+                    return Result.fail("电影不存在");
+                }
                 return Result.ok(JSONUtil.toBean(movieJson,MovieVO.class));
             }
             //5.查数据库
             Movie movie = getById(movieId);
-            if(movie == null){
+            if(movie == null|| !Objects.equals(movie.getStatus(), SystemConstants.MOVIE_STATUS_NORMAL)){
                 stringRedisTemplate.opsForValue().set(key, "empty", RedisConstants.MOVIE_INFO_EMPTY_TTL, TimeUnit.MINUTES);
                 return Result.fail("电影不存在");
             }
@@ -95,7 +103,9 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
             return Result.ok(vo);
         }finally {
             //7.释放锁
-            lock.unlock();
+            if(isLock && lock.isHeldByCurrentThread()){
+                lock.unlock();
+            }
         }
     }
 
