@@ -126,14 +126,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     }
 
     private List<UserDTO> getUserDTOS(List<Long> ids) {
-        // 查询用户信息
-        // 这样会导致返回顺序不一致
-        // return userService.listByIds(ids)
-        //         .stream()
-        //         .map(item -> BeanUtil.copyProperties(item, UserDTO.class))
-        //         .toList();
-
-        // 优化，保证返回顺序一致
         List<User> users = userService.listByIds(ids);
         Map<Long, UserDTO> map = users.stream()
                 .collect(Collectors.toMap(
@@ -151,10 +143,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     @Transactional
     @Override
     public Result follow(Long id, Boolean isFollow) {
-        // 防止关注不存在的用户
-        if (!userService.exists(new QueryWrapper<User>().eq("id", id).eq("status", SystemConstants.USER_STATUS_NORMAL))) {
-            return Result.fail("用户不存在");
-        }
         // 1. 获取当前用户id并判断是否为自己
         Long userId = UserHolder.getUser().getId();
         if (userId.equals(id)) {
@@ -162,6 +150,10 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         }
         // 2. 判断关注还是取关
         if (!isFollow) {
+            // 防止关注不存在的用户
+            if (!userService.exists(new QueryWrapper<User>().eq("id", id).eq("status", SystemConstants.USER_STATUS_NORMAL))) {
+                return Result.fail("用户不存在");
+            }
             // 防止重复关注
             boolean exist = query()
                     .eq("user_id", userId)
