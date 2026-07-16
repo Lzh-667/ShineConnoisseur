@@ -1,6 +1,5 @@
 package com.lzh.service.impl;
 
-import ch.qos.logback.core.net.SyslogConstants;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.UUID;

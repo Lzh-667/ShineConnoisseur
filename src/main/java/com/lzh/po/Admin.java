@@ -1,7 +1,6 @@
 package com.lzh.po;
 
 import com.baomidou.mybatisplus.annotation.*;
-import jakarta.annotation.security.DenyAll;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
