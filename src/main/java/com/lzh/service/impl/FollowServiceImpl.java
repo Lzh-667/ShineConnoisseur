@@ -190,9 +190,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                      throw new RuntimeException("关注失败");
                 }
                 log.info("关注成功");
-                // 移除缓存
-                stringRedisTemplate.delete(RedisConstants.FOLLOWER_KEY + id);
-                stringRedisTemplate.delete(RedisConstants.FOLLOWING_KEY + userId);
+                // 增添缓存
+                stringRedisTemplate.opsForSet().add(RedisConstants.FOLLOWER_KEY + id,userId.toString());
+                stringRedisTemplate.opsForSet().add(RedisConstants.FOLLOWING_KEY + userId,id.toString());
                 // 发送关注消息
                 MessageDTO dto = new MessageDTO();
                 dto.setUserId(id);
@@ -228,8 +228,8 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 }
                 log.info("取关成功");
                 // 移除缓存
-                stringRedisTemplate.delete(RedisConstants.FOLLOWER_KEY + id);
-                stringRedisTemplate.delete(RedisConstants.FOLLOWING_KEY + userId);
+                stringRedisTemplate.opsForSet().remove(RedisConstants.FOLLOWER_KEY + id,userId);
+                stringRedisTemplate.opsForSet().remove(RedisConstants.FOLLOWING_KEY + userId,id);
             }
             else{
                 log.info("取关失败");
