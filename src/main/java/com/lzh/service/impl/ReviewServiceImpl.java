@@ -48,6 +48,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     @Transactional
     @Override
     public Result publishReview(ReviewDTO reviewDTO,Long movieId) {
+        Movie movie = movieService.getById(movieId);
+        if (movie == null|| !movie.getStatus().equals(SystemConstants.MOVIE_STATUS_NORMAL)) {
+            return Result.fail("电影不存在");
+        }
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.将DTO转为Review
@@ -82,7 +86,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         //2.根据movieId查询movie
         Movie movie = movieService.getById(movieId);
         //3.判断movie是否存在
-        if (movie == null) {
+        if (movie == null|| !movie.getStatus().equals(SystemConstants.MOVIE_STATUS_NORMAL)) {
             return Result.fail("电影不存在");
         }
         //4.查询影评列表
@@ -161,7 +165,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.防止点赞不存在的影评
-        if(!exists(new QueryWrapper<Review>().eq("id",reviewId))){
+        if(!exists(new QueryWrapper<Review>().eq("id",reviewId).eq("status",SystemConstants.REVIEW_STATUS_NORMAL))){
             return Result.fail("点赞的影评不存在");
         }
         //3.判断是点赞还是取消点赞
@@ -279,7 +283,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         Long userId = UserHolder.getUser().getId();
         //2.确认权限
         Review review = getById(reviewId);
-        if(review==null){
+        if(review==null||!review.getStatus().equals(SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("影评不存在");
         }
         Integer oldRating = review.getRating();
@@ -319,7 +323,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         Long userId = UserHolder.getUser().getId();
         //2.确认权限
         Review review = getById(reviewId);
-        if(review==null){
+        if(review==null||!review.getStatus().equals(SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("影评不存在");
         }
         Integer oldRating = review.getRating();
@@ -406,6 +410,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                         Review::getCreateTime,
                         LocalDateTime.now().minusDays(30)
                 )
+                .eq(Review::getStatus, SystemConstants.REVIEW_STATUS_NORMAL)
                 .list();
         //2.计算score并排序
         List<ReviewHotDTO> hotReviews = reviews.stream()
