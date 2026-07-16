@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class DashboardInit implements ApplicationRunner {
+public class DashboardCacheInit implements ApplicationRunner {
     @Resource
     private IAdminDashboardService adminDashboardService;
     @Override
@@ -17,7 +17,7 @@ public class DashboardInit implements ApplicationRunner {
         try {
             adminDashboardService.refreshDashboardCache();
         } catch (Exception e) {
-            log.error("预热dashboard数据缓存失败");
+            log.error("预热dashboard数据缓存失败",e);
         }
     }
 }

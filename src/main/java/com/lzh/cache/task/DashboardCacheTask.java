@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class DashboardTask {
+public class DashboardCacheTask {
     @Resource
     private IAdminDashboardService adminDashboardService;
     @Scheduled(cron = "0 0 * * * ?")

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -33,18 +35,26 @@ public class AdminDashboardServiceImpl implements IAdminDashboardService {
         vo.setUserCount(userService.count());
         vo.setMovieCount(movieService.count());
         vo.setReviewCount(reviewService.count());
-        vo.setUpdateTime(LocalDateTime.now());
+        vo.setUpdateTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
         LocalDateTime today = LocalDate.now().atStartOfDay();
         vo.setTodayReviewCount(reviewService.query().ge("create_time",today).count());
 
         LocalDateTime week = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay();
         vo.setWeekReviewCount(reviewService.query().ge("create_time",week).count());
+
+        Map<String,String> map = new HashMap<>();
+        map.put("userCount", String.valueOf(vo.getUserCount()));
+        map.put("movieCount", String.valueOf(vo.getMovieCount()));
+        map.put("reviewCount", String.valueOf(vo.getReviewCount()));
+        map.put("todayReviewCount", String.valueOf(vo.getTodayReviewCount()));
+        map.put("weekReviewCount", String.valueOf(vo.getWeekReviewCount()));
+        map.put("updateTime", String.valueOf(vo.getUpdateTime()));
         //2.写入redis
         stringRedisTemplate.opsForHash()
                 .putAll(
                         RedisConstants.ADMIN_DASHBOARD_KEY,
-                        BeanUtil.beanToMap(vo)
+                        map
                 );
     }
     @Override

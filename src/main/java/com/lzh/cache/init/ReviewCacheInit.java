@@ -17,7 +17,7 @@ public class ReviewCacheInit implements ApplicationRunner {
         try {
             reviewService.updateHotReviewCache();
         } catch (Exception e) {
-            log.error("预热热门影评缓存失败");
+            log.error("预热热门影评缓存失败",e);
         }
     }
 }

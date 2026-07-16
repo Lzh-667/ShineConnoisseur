@@ -17,7 +17,7 @@ public class MovieCacheInit implements ApplicationRunner {
         try {
             movieService.updateHotMovieCache();
         } catch (Exception e) {
-            log.error("预热热门电影缓存失败");
+            log.error("预热热门电影缓存失败",e);
         }
     }
 }
