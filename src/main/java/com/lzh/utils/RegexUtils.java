@@ -19,16 +19,6 @@ public class RegexUtils {
     public static boolean isEmailInvalid(String email){
         return mismatch(email, RegexPatterns.EMAIL_REGEX);
     }
-
-    /**
-     * 是否是无效验证码格式
-     * @param code 要校验的验证码
-     * @return true:符合，false：不符合
-     */
-    public static boolean isCodeInvalid(String code){
-        return mismatch(code, RegexPatterns.VERIFY_CODE_REGEX);
-    }
-
     /**
      * 是否是无效密码格式
      * @param password 要校验的验证码
