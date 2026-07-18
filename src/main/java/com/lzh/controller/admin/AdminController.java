@@ -4,6 +4,7 @@ import com.lzh.common.Result;
 import com.lzh.dto.AdminLoginDTO;
 import com.lzh.service.IAdminService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,7 +24,8 @@ public class AdminController {
         return adminService.login(adminLoginDTO);
     }
     @PostMapping("/logout")
-    public Result logout(){
-        return adminService.logout();
+    public Result logout(HttpServletRequest request){
+        String token = request.getHeader("authorization");
+        return adminService.logout(token);
     }
 }

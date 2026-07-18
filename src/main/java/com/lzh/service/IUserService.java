@@ -18,4 +18,6 @@ public interface IUserService extends IService<User> {
     Result sendRegisterCode(String phone);
 
     Result info(Long id);
+
+    Result logout(String token);
 }

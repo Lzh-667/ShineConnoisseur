@@ -11,6 +11,7 @@ import com.lzh.dto.AdminLoginDTO;
 import com.lzh.mapper.AdminMapper;
 import com.lzh.po.Admin;
 import com.lzh.service.IAdminService;
+import com.lzh.utils.AdminHolder;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
 import jakarta.annotation.Resource;
@@ -92,7 +93,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         return token;
     }
     @Override
-    public Result logout() {
+    public Result logout(String token) {
+        stringRedisTemplate.delete(RedisConstants.ADMIN_LOGIN_KEY + token);
+        AdminHolder.removeAdmin();
         return Result.ok();
     }
 }

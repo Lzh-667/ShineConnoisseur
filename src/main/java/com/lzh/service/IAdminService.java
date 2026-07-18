@@ -8,5 +8,5 @@ import com.lzh.po.Admin;
 public interface IAdminService extends IService<Admin> {
     Result login(AdminLoginDTO adminLoginDTO);
 
-    Result logout();
+    Result logout(String token);
 }
