@@ -14,7 +14,6 @@ import com.lzh.vo.AdminMovieVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +26,7 @@ import java.util.List;
 public class AdminMovieServiceImpl implements IAdminMovieService {
     @Resource
     private IMovieService movieService;
-    @Autowired
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
@@ -83,6 +82,8 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
             log.info("管理员{}修改电影{}信息失败",adminId,movieId);
             return Result.fail("修改电影失败");
         }
+        //删除缓存
+        stringRedisTemplate.delete(RedisConstants.MOVIE_INFO_KEY + movieId);
         log.info("管理员{}修改了电影{}信息",adminId,movieId);
         return Result.ok();
     }

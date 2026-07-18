@@ -22,7 +22,7 @@ public class FollowController {
     public Result getFollowingList() {
         return followService.getFollowingList();
     }
-    @GetMapping("/{id}/{isFollow}")
+    @PostMapping("/{id}/{isFollow}")
     public Result follow(@PathVariable("id") Long id, @PathVariable("isFollow") Boolean isFollow){
         return followService.follow(id, isFollow);
     }
