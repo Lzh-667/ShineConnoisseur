@@ -15,12 +15,12 @@ public class FollowController {
     private IFollowService followService;
 
     @GetMapping("/list/follower")
-    public Result getFollowerList() {
-        return followService.getFollowerList();
+    public Result getFollowerList(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+        return followService.getFollowerList(current);
     }
     @GetMapping("/list/following")
-    public Result getFollowingList() {
-        return followService.getFollowingList();
+    public Result getFollowingList(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+        return followService.getFollowingList(current);
     }
     @PostMapping("/{id}/{isFollow}")
     public Result follow(@PathVariable("id") Long id, @PathVariable("isFollow") Boolean isFollow){
