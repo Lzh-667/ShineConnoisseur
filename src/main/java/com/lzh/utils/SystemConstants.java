@@ -21,7 +21,6 @@ public class SystemConstants {
 
     public static final Integer REVIEW_STATUS_BAN = 0;
     public static final Integer REVIEW_STATUS_NORMAL = 1;
-    public static final Integer REVIEW_STATUS_AUDITING = 2;
 
     public static final Integer COMMENT_STATUS_BAN = 0;
     public static final Integer COMMENT_STATUS_NORMAL = 1;
