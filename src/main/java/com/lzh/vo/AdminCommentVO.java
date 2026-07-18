@@ -21,7 +21,7 @@ public class AdminCommentVO {
     /** 点赞数 */
     private Integer likeCount=0;
 
-    /** 评状态 */
+    /** 状态：0-用户删除，1-正常，2-管理员封禁 */
     private Integer status;
 
     /** 创建时间 */

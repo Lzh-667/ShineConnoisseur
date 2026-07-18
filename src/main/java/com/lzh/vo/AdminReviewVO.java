@@ -30,7 +30,7 @@ public class AdminReviewVO {
     /** 评论数量 */
     private Integer commentCount;
 
-    /** 状态：0-删除，1-正常，2-审核中 */
+    /** 状态：0-用户删除，1-正常，2-管理员封禁 */
     private Integer status;
 
     /** 创建时间 */
