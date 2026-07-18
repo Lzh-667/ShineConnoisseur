@@ -1,16 +1,15 @@
 package com.lzh.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lzh.po.ReviewComment;
-import io.lettuce.core.dynamic.annotation.Param;
 import org.apache.ibatis.annotations.Mapper;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface ReviewCommentMapper extends BaseMapper<ReviewComment> {
 
-    List<Map<String, Object>> countByReviewIds(@Param("reviewIds") Set<Long> reviewIds);
+    @Select("SELECT * FROM review_comment WHERE status IN (1, 2) ORDER BY create_time DESC")
+    IPage<ReviewComment> selectAdminPage(Page<ReviewComment> page);
 }
