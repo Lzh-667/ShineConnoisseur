@@ -34,16 +34,12 @@ import java.util.stream.Collectors;
 @Service
 public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> implements IFollowService {
 
-
     @Resource
     private StringRedisTemplate stringRedisTemplate;
-
     @Resource
     private IUserService userService;
-
     @Resource
     private RabbitTemplate rabbitTemplate;
-
     @Override
     public Result getFollowerList(Integer current) {
         // 1. 获取当前用户ID
@@ -163,7 +159,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         }
         return null;
     }
-
     @Transactional
     @Override
     public Result follow(Long id, Boolean isFollow) {
@@ -282,7 +277,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 stringRedisTemplate.delete(key);
             }
         }
-
         // 3. redis不存在，查询数据库重建缓存
         List<UserFollow> follows = query()
                 .eq("user_id", userId)
@@ -291,7 +285,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         Set<Long> followUserIds = follows.stream()
                 .map(UserFollow::getFollowUserId)
                 .collect(Collectors.toSet());
-
         if (!follows.isEmpty()) {
             for (UserFollow f : follows) {
                 stringRedisTemplate.opsForZSet().add(key,
@@ -303,7 +296,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
             stringRedisTemplate.opsForZSet().add(key, "empty", 0);
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_EMPTY_TTL, TimeUnit.MINUTES);
         }
-
         return Result.ok(followUserIds.contains(id));
     }
 }
