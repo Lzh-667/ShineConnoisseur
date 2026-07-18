@@ -2,7 +2,9 @@ package com.lzh.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.dto.MessageDTO;
 import com.lzh.dto.UserDTO;
@@ -22,6 +24,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -41,90 +44,83 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     private RabbitTemplate rabbitTemplate;
 
     @Override
-    public Result getFollowerList() {
+    public Result getFollowerList(Integer current) {
         // 1. 获取当前用户ID
         Long userId = UserHolder.getUser().getId();
-        // 2. 查redis
-        String key=RedisConstants.FOLLOWER_KEY + userId;
-        Set<String> setIds = stringRedisTemplate.opsForSet().members(key);
-        if(setIds!= null&& !setIds.isEmpty()){
-            List<Long> ids = setIds.stream()
-                    .filter(s -> !"empty".equals(s))
-                    .map(Long::valueOf)
-                    .toList();
-            if (ids.isEmpty()) {
-                return Result.ok(Collections.emptyList());
-            }
-            else{
-                return Result.ok(getUserDTOS(ids));
-            }
+        // 2. 查redis ZSet
+        String key = RedisConstants.FOLLOWER_KEY + userId;
+        Result redisResult = tryGetListFromRedis(key, current);
+        if (redisResult != null) {
+            return redisResult;
         }
         // redis没数据
         // 3. 查数据库重建缓存
-        List<Long> ids = query()
+        Page<UserFollow> pageResult = query()
                 .eq("follow_user_id", userId)
-                .list()
-                .stream()
-                .map(UserFollow::getUserId)
-                .toList();
+                .orderByDesc("create_time")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
-        if (!ids.isEmpty()) {
-            String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
-            stringRedisTemplate.opsForSet().add(key, values);
+        if (pageResult.getTotal() > 0) {
+            // 重建全量缓存
+            List<UserFollow> follows = query()
+                    .eq("follow_user_id", userId)
+                    .orderByDesc("create_time")
+                    .list();
+            for (UserFollow f : follows) {
+                stringRedisTemplate.opsForZSet().add(key,
+                        f.getUserId().toString(),
+                        f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+            }
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWER_TTL, TimeUnit.MINUTES);
-            return Result.ok(getUserDTOS(ids));
-        }
-        else{
-            stringRedisTemplate.opsForSet().add(key,"empty");
+
+            List<Long> ids = pageResult.getRecords().stream()
+                    .map(UserFollow::getUserId).toList();
+            return Result.ok(new PageResult<>(pageResult.getTotal(), getUserDTOS(ids)));
+        } else {
+            stringRedisTemplate.opsForZSet().add(key, "empty", 0);
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWER_EMPTY_TTL, TimeUnit.MINUTES);
+            return Result.ok(new PageResult<UserDTO>(0L, Collections.emptyList()));
         }
-
-        return Result.ok(Collections.emptyList());
     }
-
     @Override
-    public Result getFollowingList() {
+    public Result getFollowingList(Integer current) {
         // 1. 获取当前用户ID
         Long userId = UserHolder.getUser().getId();
-        // 2. 查redis
+        // 2. 查redis ZSet
         String key = RedisConstants.FOLLOWING_KEY + userId;
-        Set<String> setIds = stringRedisTemplate.opsForSet().members(key);
-        if(setIds!= null&& !setIds.isEmpty()){
-            List<Long> ids = setIds.stream()
-                    .filter(s -> !"empty".equals(s))
-                    .map(Long::valueOf)
-                    .toList();
-            if (ids.isEmpty()) {
-                return Result.ok(Collections.emptyList());
-            }
-            else{
-                return Result.ok(getUserDTOS(ids));
-            }
+        Result redisResult = tryGetListFromRedis(key, current);
+        if (redisResult != null) {
+            return redisResult;
         }
-
         // redis没数据
         // 3. 查数据库重建缓存
-        List<Long> ids = query()
+        Page<UserFollow> pageResult = query()
                 .eq("user_id", userId)
-                .list()
-                .stream()
-                .map(UserFollow::getFollowUserId)
-                .toList();
+                .orderByDesc("create_time")
+                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
-        if (!ids.isEmpty()) {
-            String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
-            stringRedisTemplate.opsForSet().add(key, values);
+        if (pageResult.getTotal() > 0) {
+            // 重建全量缓存
+            List<UserFollow> follows = query()
+                    .eq("user_id", userId)
+                    .orderByDesc("create_time")
+                    .list();
+            for (UserFollow f : follows) {
+                stringRedisTemplate.opsForZSet().add(key,
+                        f.getFollowUserId().toString(),
+                        f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+            }
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_TTL, TimeUnit.MINUTES);
-            return Result.ok(getUserDTOS(ids));
-        }
-        else{
-            stringRedisTemplate.opsForSet().add(key,"empty");
+
+            List<Long> ids = pageResult.getRecords().stream()
+                    .map(UserFollow::getFollowUserId).toList();
+            return Result.ok(new PageResult<>(pageResult.getTotal(), getUserDTOS(ids)));
+        } else {
+            stringRedisTemplate.opsForZSet().add(key, "empty", 0);
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_EMPTY_TTL, TimeUnit.MINUTES);
+            return Result.ok(new PageResult<UserDTO>(0L, Collections.emptyList()));
         }
-
-        return Result.ok(Collections.emptyList());
     }
-
     private List<UserDTO> getUserDTOS(List<Long> ids) {
         List<User> users = userService.listByIds(ids);
         Map<Long, UserDTO> map = users.stream()
@@ -138,6 +134,33 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 .map(map::get)
                 .filter(Objects::nonNull) // 排除关注关系存在，但用户已被删除的脏数据
                 .toList();
+    }
+    private Result tryGetListFromRedis(String key, Integer current) {
+        try {
+            Long total = stringRedisTemplate.opsForZSet().size(key);
+            if (total != null && total > 0) {
+                boolean hasEmpty = stringRedisTemplate.opsForZSet().score(key, "empty") != null;
+                long realTotal = total - (hasEmpty ? 1 : 0);
+                if (realTotal == 0) {
+                    return Result.ok(new PageResult<UserDTO>(0L, Collections.emptyList()));
+                }
+                int start = (current - 1) * SystemConstants.MAX_PAGE_SIZE;
+                int end = start + SystemConstants.MAX_PAGE_SIZE - 1;
+                Set<String> idSet = stringRedisTemplate.opsForZSet().reverseRange(key, start, end);
+                if (idSet == null) {
+                    return Result.ok(new PageResult<UserDTO>(0L, Collections.emptyList()));
+                }
+                List<Long> ids = idSet.stream()
+                        .filter(s -> !"empty".equals(s))
+                        .map(Long::valueOf)
+                        .toList();
+                return Result.ok(new PageResult<>(realTotal, getUserDTOS(ids)));
+            }
+        } catch (Exception e) {
+            // redis格式不兼容，删掉走DB
+            stringRedisTemplate.delete(key);
+        }
+        return null;
     }
 
     @Transactional
@@ -183,8 +206,13 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 }
                 log.info("关注成功");
                 // 增添缓存
-                stringRedisTemplate.opsForSet().add(RedisConstants.FOLLOWER_KEY + id,userId.toString());
-                stringRedisTemplate.opsForSet().add(RedisConstants.FOLLOWING_KEY + userId,id.toString());
+                long now = System.currentTimeMillis();
+                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWER_KEY + id, userId.toString(), now);
+                stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWER_KEY + id, "empty");
+                stringRedisTemplate.expire(RedisConstants.FOLLOWER_KEY + id, RedisConstants.FOLLOWER_TTL, TimeUnit.MINUTES);
+                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWING_KEY + userId, id.toString(), now);
+                stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWING_KEY + userId, "empty");
+                stringRedisTemplate.expire(RedisConstants.FOLLOWING_KEY + userId, RedisConstants.FOLLOWING_TTL, TimeUnit.MINUTES);
                 // 发送关注消息
                 MessageDTO dto = new MessageDTO();
                 dto.setUserId(id);
@@ -220,8 +248,8 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 }
                 log.info("取关成功");
                 // 移除缓存
-                stringRedisTemplate.opsForSet().remove(RedisConstants.FOLLOWER_KEY + id,userId);
-                stringRedisTemplate.opsForSet().remove(RedisConstants.FOLLOWING_KEY + userId,id);
+                stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWER_KEY + id, userId.toString());
+                stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWING_KEY + userId, id.toString());
             }
             else{
                 log.info("取关失败");
@@ -238,30 +266,36 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         String key = RedisConstants.FOLLOWING_KEY + userId;
         Boolean exists = stringRedisTemplate.hasKey(key);
         if (exists) {
-            Boolean isFollow = stringRedisTemplate.opsForSet()
-                    .isMember(key, id.toString());
-
-            return Result.ok(Boolean.TRUE.equals(isFollow));
+            try {
+                Double score = stringRedisTemplate.opsForZSet().score(key, id.toString());
+                return Result.ok(score != null);
+            } catch (Exception e) {
+                // redis格式不兼容，删掉走DB
+                stringRedisTemplate.delete(key);
+            }
         }
 
         // 3. redis不存在，查询数据库重建缓存
-        List<Long> ids = query()
+        List<UserFollow> follows = query()
                 .eq("user_id", userId)
-                .list()
-                .stream()
-                .map(UserFollow::getFollowUserId)
-                .toList();
+                .list();
 
-        if (!ids.isEmpty()) {
-            String[] values = ids.stream().map(String::valueOf).toArray(String[]::new);
-            stringRedisTemplate.opsForSet().add(key, values);
+        Set<Long> followUserIds = follows.stream()
+                .map(UserFollow::getFollowUserId)
+                .collect(Collectors.toSet());
+
+        if (!follows.isEmpty()) {
+            for (UserFollow f : follows) {
+                stringRedisTemplate.opsForZSet().add(key,
+                        f.getFollowUserId().toString(),
+                        f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+            }
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_TTL, TimeUnit.MINUTES);
-        }
-        else{
-            stringRedisTemplate.opsForSet().add(key,"empty");
+        } else {
+            stringRedisTemplate.opsForZSet().add(key, "empty", 0);
             stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_EMPTY_TTL, TimeUnit.MINUTES);
         }
 
-        return Result.ok(ids.contains(id));
+        return Result.ok(followUserIds.contains(id));
     }
 }

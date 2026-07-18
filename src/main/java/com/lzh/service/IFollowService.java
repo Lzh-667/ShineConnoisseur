@@ -5,9 +5,9 @@ import com.lzh.common.Result;
 import com.lzh.po.UserFollow;
 
 public interface IFollowService extends IService<UserFollow> {
-    Result getFollowerList();
+    Result getFollowerList(Integer current);
 
-    Result getFollowingList();
+    Result getFollowingList(Integer current);
 
     Result follow(Long id, Boolean isFollow);
 
