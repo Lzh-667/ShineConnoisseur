@@ -38,7 +38,7 @@ public class ReviewComment {
     @TableField("like_count")
     private Integer likeCount=0;
 
-    /** 状态：0-删除，1-正常 */
+    /** 状态：0-用户删除，1-正常，2-管理员封禁 */
     @TableLogic(value = "1", delval = "0")
     private Integer status;
 

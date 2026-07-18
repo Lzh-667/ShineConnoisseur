@@ -8,7 +8,7 @@ CREATE TABLE `review_comment` (
                                   `reply_user_id` bigint DEFAULT '0' COMMENT '被回复用户ID',
                                   `content` varchar(1000) NOT NULL COMMENT '评论内容',
                                   `like_count` int NOT NULL DEFAULT '0' COMMENT '点赞数',
-                                  `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：1正常 0删除',
+                                  `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-用户删除，1-正常，2-管理员封禁',
                                   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                                   PRIMARY KEY (`id`),

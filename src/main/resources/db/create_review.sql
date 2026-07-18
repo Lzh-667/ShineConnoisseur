@@ -15,7 +15,7 @@ CREATE TABLE `review` (
                           `spoiler` tinyint NOT NULL DEFAULT '0' COMMENT '是否剧透：0-否，1-是',
                           `like_count` int unsigned NOT NULL DEFAULT '0' COMMENT '点赞数',
                           `comment_count` int unsigned NOT NULL DEFAULT '0' COMMENT '评论数',
-                          `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-删除，1-正常，2-审核中',
+                          `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-用户删除，1-正常，2-管理员封禁',
                           `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                           PRIMARY KEY (`id`),
