@@ -1,11 +1,14 @@
 package com.lzh.service.impl.admin;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
+import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.po.ReviewComment;
 import com.lzh.service.IAdminCommentService;
 import com.lzh.service.IReviewCommentService;
+import com.lzh.service.IReviewService;
 import com.lzh.utils.AdminHolder;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
@@ -26,14 +29,16 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
     @Resource
     private IReviewCommentService reviewCommentService;
     @Resource
+    private IReviewService reviewService;
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private ReviewCommentMapper reviewCommentMapper;
     @Override
     public Result listComments(Long current) {
-        //1.查询评论列表
-        Page<ReviewComment> page = reviewCommentService.query()
-                .orderByDesc("create_time")
-                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
-        //2.转换为VO
+        // 使用自定义Mapper方法绕过@TableLogic，查询status=1和status=2的评论
+        IPage<ReviewComment> page = reviewCommentMapper
+                .selectAdminPage(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         List<AdminCommentVO> vos = page.getRecords()
                 .stream()
                 .map(comment -> {
@@ -42,26 +47,19 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
                     return vo;
                 })
                 .toList();
-        //3.封装并返回
-        PageResult<AdminCommentVO> result = new PageResult<>();
-        result.setTotal(page.getTotal());
-        result.setRecords(vos);
-        return Result.ok(result);
+        return Result.ok(new PageResult<>(page.getTotal(),vos));
     }
 
     @Transactional
     @Override
     public Result updateCommentStatus(Long id) {
         Long adminId = AdminHolder.getAdmin().getId();
-        //1.判断评论是否存在
         ReviewComment comment = reviewCommentService.getById(id);
         if(comment==null){
             return Result.fail("评论不存在");
         }
-        //2.获取评论当前状态
         Integer status = comment.getStatus();
-        //3.修改数据
-        Integer newStatus =  SystemConstants.COMMENT_STATUS_NORMAL.equals(status)
+        Integer newStatus = SystemConstants.COMMENT_STATUS_NORMAL.equals(status)
                 ? SystemConstants.COMMENT_STATUS_BAN
                 : SystemConstants.COMMENT_STATUS_NORMAL;
         boolean success = reviewCommentService.update()
@@ -73,11 +71,27 @@ public class AdminCommentServiceImpl implements IAdminCommentService {
             return Result.fail("修改失败");
         }
         if(SystemConstants.COMMENT_STATUS_NORMAL.equals(status)){
-            log.info("管理员{}禁用了评论{}",adminId,id);
-            //删除缓存
-            stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY+id);
+            // 封禁：扣除影评的评论数
+            success = reviewService.update()
+                    .setSql("comment_count = comment_count - 1")
+                    .gt("comment_count", 0)
+                    .eq("id", comment.getReviewId())
+                    .update();
+            if (!success) {
+                throw new RuntimeException("封禁评论：更新影评评论数失败");
+            }
+            stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id);
+            log.info("管理员{}封禁了评论{}",adminId,id);
         }
         else{
+            // 解封：恢复影评的评论数
+            success = reviewService.update()
+                    .setSql("comment_count = comment_count + 1")
+                    .eq("id", comment.getReviewId())
+                    .update();
+            if (!success) {
+                throw new RuntimeException("解封评论：更新影评评论数失败");
+            }
             log.info("管理员{}解封了评论{}",adminId,id);
         }
         return Result.ok();
