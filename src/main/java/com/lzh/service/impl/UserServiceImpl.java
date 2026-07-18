@@ -16,6 +16,7 @@ import com.lzh.service.IUserService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
 import com.lzh.utils.SystemConstants;
+import com.lzh.utils.UserHolder;
 import com.lzh.vo.UserInfo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -263,6 +264,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         UserInfo info = new UserInfo();
         BeanUtils.copyProperties(user,info);
         return Result.ok(info);
+    }
+    @Override
+    public Result logout(String token) {
+        stringRedisTemplate.delete(RedisConstants.LOGIN_USER_KEY + token);
+        UserHolder.removeUser();
+        return Result.ok();
     }
     private String createToken(User user) {
         //1.保存用户信息到redis

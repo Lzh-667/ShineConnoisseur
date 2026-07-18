@@ -5,6 +5,7 @@ import com.lzh.dto.LoginFormDTO;
 import com.lzh.dto.RegisterFormDTO;
 import com.lzh.service.IUserService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,8 +41,8 @@ public class UserController {
         return userService.info(id);
     }
     @PostMapping("/logout")
-    public Result logout() {
-        //TODO 实现登出功能
-        return Result.fail("功能未完成");
+    public Result logout(HttpServletRequest request) {
+        String token = request.getHeader("authorization");
+        return userService.logout(token);
     }
 }
