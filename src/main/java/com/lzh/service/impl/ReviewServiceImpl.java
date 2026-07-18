@@ -3,10 +3,12 @@ package com.lzh.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.dto.MessageDTO;
 import com.lzh.dto.ReviewDTO;
 import com.lzh.dto.ReviewHotDTO;
+import com.lzh.mapper.ReviewCommentMapper;
 import com.lzh.mapper.ReviewMapper;
 import com.lzh.po.*;
 import com.lzh.service.*;
@@ -45,6 +47,8 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RabbitTemplate rabbitTemplate;
+    @Resource
+    private ReviewCommentMapper reviewCommentMapper;
     @Transactional
     @Override
     public Result publishReview(ReviewDTO reviewDTO,Long movieId) {
@@ -52,26 +56,26 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         if (movie == null|| !Objects.equals(movie.getStatus(), SystemConstants.MOVIE_STATUS_NORMAL)) {
             return Result.fail("电影不存在");
         }
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.将DTO转为Review
+        // 2. 将DTO转为Review
         Review review = new Review();
         BeanUtils.copyProperties(reviewDTO, review);
         review.setUserId(userId);
         review.setMovieId(movieId);
-        //3.保存影评到数据库
+        // 3. 保存影评到数据库
         boolean isSuccess = save(review);
         if(!isSuccess) {
             return Result.fail("添加失败");
         }
-        //4.更改各表数据
-        //4.1.更改movie数据
+        // 4. 更改各表数据
+        // 4.1. 更改movie数据
         movieService.update()
                 .setSql("rating_sum = rating_sum + " + review.getRating() +
                         ", rating_count = rating_count + 1")
                 .eq("id",review.getMovieId())
                 .update();
-        //4.2.更改user数据
+        // 4.2. 更改user数据
         userService.update()
                 .setSql("review_count=review_count+1")
                 .eq("id", userId)
@@ -81,15 +85,15 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     }
     @Override
     public Result listReview(Long movieId, Integer current) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.根据movieId查询movie
+        // 2. 根据movieId查询movie
         Movie movie = movieService.getById(movieId);
-        //3.判断movie是否存在
+        // 3. 判断movie是否存在
         if (movie == null|| !Objects.equals(movie.getStatus(), SystemConstants.MOVIE_STATUS_NORMAL)) {
             return Result.fail("电影不存在");
         }
-        //4.查询影评列表
+        // 4. 查询影评列表
         Page<Review> page = query()
                 .eq("movie_id", movieId)
                 .eq("status", SystemConstants.REVIEW_STATUS_NORMAL)
@@ -98,29 +102,29 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
         List<Review> reviewList = page.getRecords();
         if (reviewList.isEmpty()) {
-            return Result.ok(Collections.emptyList());
+            return Result.ok(new PageResult<>(0L, Collections.emptyList()));
         }
 
-        //5.获取影评id和用户id
+        // 5. 获取影评id和用户id
         Set<Long> reviewIds = getReviewIds(reviewList);
 
         Set<Long> userIds = getUserIds(reviewList);
 
-        //6.批量查询用户
+        // 6. 批量查询用户
         Map<Long, User> userMap = getUserMap(userIds);
 
-        //7.查询当前用户点赞过的影评
+        // 7. 查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
 
-        //9.将列表转换为VO
+        // 9. 将列表转换为VO
         List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds,userId);
-        return Result.ok(reviewVOList);
+        return Result.ok(new PageResult<>(page.getTotal(), reviewVOList));
     }
     @Override
     public Result myReviews(Integer current) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.根据用户id查询
+        // 2. 根据用户id查询
         Page<Review> page = query()
                 .eq("user_id",userId)
                 .eq("status",SystemConstants.REVIEW_STATUS_NORMAL)
@@ -129,16 +133,16 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
         List<Review> reviewList = page.getRecords();
         if (reviewList.isEmpty()) {
-            return Result.ok(Collections.emptyList());
+            return Result.ok(new PageResult<>(0L, Collections.emptyList()));
         }
 
-        //3.获取影评id
+        // 3. 获取影评id
         Set<Long> reviewIds = getReviewIds(reviewList);
 
-        //4.查询当前用户点赞过的影评
+        // 4. 查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
 
-        //6.将列表转为VO
+        // 6. 将列表转为VO
         User user=userService.getById(userId);
         String userName = user.getUsername();
         String nickname = user.getNickname();
@@ -157,25 +161,25 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     return vo;
                 })
                 .toList();
-        return Result.ok(reviewVOList);
+        return Result.ok(new PageResult<>(page.getTotal(), reviewVOList));
     }
     @Transactional
     @Override
     public Result likeReview(Long reviewId) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.判断是点赞还是取消点赞
+        // 2. 判断是点赞还是取消点赞
         boolean Liked = isLike(reviewId, userId);
         String key = RedisConstants.LIKE_REVIEW_KEY + reviewId;
         if (Liked) {
-            //3.1.取消点赞
-            //删除数据
+            // 3.1. 取消点赞
+            // 删除数据
             boolean isSuccess = likeRecordService.remove(new QueryWrapper<LikeRecord>()
                     .eq("user_id", userId)
                     .eq("target_id", reviewId)
                     .eq("target_type", SystemConstants.TARGET_REVIEW));
             if(isSuccess){
-                //更新点赞数量
+                // 更新点赞数量
                 boolean success=update().setSql("like_count=like_count-1")
                         .eq("id", reviewId)
                         .gt("like_count", 0)
@@ -184,7 +188,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new RuntimeException("更新点赞数量失败");
                 }
                 log.info("取消点赞成功");
-                //移除缓存
+                // 移除缓存
                 stringRedisTemplate.opsForSet().remove(key, userId.toString());
             }
             else{
@@ -197,12 +201,12 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             return Result.ok(likeVO);
         }
         else{
-            //3.2.点赞
-            //防止点赞不存在的影评
+            // 3.2. 点赞
+            // 防止点赞不存在的影评
             if(!exists(new QueryWrapper<Review>().eq("id",reviewId).eq("status",SystemConstants.REVIEW_STATUS_NORMAL))){
                 return Result.fail("点赞的影评不存在");
             }
-            //防止重复点赞
+            // 防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
                     .eq("target_id", reviewId)
@@ -211,14 +215,14 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             if(exist){
                 return Result.fail("不能重复点赞");
             }
-            //新增数据
+            // 新增数据
             LikeRecord likeRecord = new LikeRecord();
             likeRecord.setUserId(userId);
             likeRecord.setTargetId(reviewId);
             likeRecord.setTargetType(SystemConstants.TARGET_REVIEW);
             boolean isSuccess = likeRecordService.save(likeRecord);
             if (isSuccess) {
-                //4.更新点赞数量
+                // 4. 更新点赞数量
                 boolean success=update().setSql("like_count=like_count+1")
                         .eq("id", reviewId)
                         .update();
@@ -226,7 +230,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new RuntimeException("更新点赞数量失败");
                 }
                 log.info("点赞成功");
-                //增添缓存
+                // 增添缓存
                 stringRedisTemplate.opsForSet().add(key, userId.toString());
                 // 发送点赞消息
                 MessageDTO dto = new MessageDTO();
@@ -251,7 +255,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
     }
     public boolean isLike(Long reviewId,Long userId) {
-        //2.查redis
+        // 2. 查redis
         String reviewKey = RedisConstants.LIKE_REVIEW_KEY + reviewId;
         Boolean exists = stringRedisTemplate.hasKey(reviewKey);
         if (exists) {
@@ -260,7 +264,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
             return Boolean.TRUE.equals(isLike);
         }
-        //3.redis不存在，查数据库重建缓存
+        // 3. redis不存在，查数据库重建缓存
         List<Long> ids = likeRecordService.query()
                 .eq("target_id", reviewId)
                 .eq("target_type", SystemConstants.TARGET_REVIEW)
@@ -279,9 +283,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     @Transactional
     @Override
     public Result updateReview(Long reviewId, ReviewDTO reviewDTO) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.确认权限
+        // 2. 确认权限
         Review review = getById(reviewId);
         if(review==null||!Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("影评不存在");
@@ -291,7 +295,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         if (!review.getUserId().equals(userId)) {
             return Result.fail("没有修改权限");
         }
-        //3.修改数据
+        // 3. 修改数据
         boolean isSuccess =update().set("rating", reviewDTO.getRating())
                 .set("title", reviewDTO.getTitle())
                 .set("content", reviewDTO.getContent())
@@ -299,7 +303,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .eq("id", reviewId)
                 .update();
         if(isSuccess){
-            //修改电影总评分
+            // 修改电影总评分
             int diff = reviewDTO.getRating() - oldRating;
             boolean success=movieService.update()
                     .setSql("rating_sum=rating_sum+" + diff)
@@ -319,9 +323,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     @Transactional
     @Override
     public Result deleteReview(Long reviewId) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.确认权限
+        // 2. 确认权限
         Review review = getById(reviewId);
         if(review==null||!Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("影评不存在");
@@ -331,17 +335,17 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         if (!review.getUserId().equals(userId)) {
             return Result.fail("没有删除权限");
         }
-        //3.修改数据
+        // 3. 修改数据
         boolean isSuccess = removeById(reviewId);
         if(isSuccess){
-            //修改电影数据
+            // 修改电影数据
             boolean success1=movieService.update()
                     .setSql("rating_sum=rating_sum-" + oldRating)
                     .setSql("rating_count = rating_count-1")
                     .gt("rating_count", 0)
                     .eq("id", movieId)
                     .update();
-            //修改个人数据
+            // 修改个人数据
             boolean success2=userService.update()
                     .setSql("review_count=review_count-1")
                     .gt("review_count", 0)
@@ -350,7 +354,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             if(!success1||!success2){
                 throw new RuntimeException("更新关联数据失败");
             }
-            //删除点赞数据和缓存
+            // 删除点赞数据和缓存
             likeRecordService.remove(
                     new QueryWrapper<LikeRecord>()
                             .eq("target_id", reviewId)
@@ -358,6 +362,32 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             );
             stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + reviewId);
             stringRedisTemplate.opsForZSet().remove(RedisConstants.HOT_REVIEW_KEY,reviewId.toString());
+            // 级联删除该影评下的所有正常评论及其点赞数据
+            List<ReviewComment> comments = reviewCommentMapper.selectList(
+                    new QueryWrapper<ReviewComment>().eq("review_id", reviewId)
+            );
+            if (!comments.isEmpty()) {
+                Set<Long> commentIds = comments.stream()
+                        .map(ReviewComment::getId)
+                        .collect(Collectors.toSet());
+                isSuccess = likeRecordService.remove(
+                        new QueryWrapper<LikeRecord>()
+                                .in("target_id", commentIds)
+                                .eq("target_type", SystemConstants.TARGET_COMMENT)
+                );
+                if (!isSuccess) {
+                    throw new RuntimeException("删除评论点赞记录失败");
+                }
+                commentIds.forEach(id ->
+                        stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id)
+                );
+                int deleted = reviewCommentMapper.delete(
+                        new QueryWrapper<ReviewComment>().eq("review_id", reviewId)
+                );
+                if (deleted == 0) {
+                    throw new RuntimeException("级联删除评论失败");
+                }
+            }
             log.info("删除成功");
             return Result.ok();
         }
@@ -369,9 +399,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
     @Override
     public Result hotReviews() {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.查询redis
+        // 2. 查询redis
         String key = RedisConstants.HOT_REVIEW_KEY;
         Set<String> setIds = stringRedisTemplate.opsForZSet().reverseRange(key, 0, 99);
         if(setIds == null || setIds.isEmpty()){
@@ -381,7 +411,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .map(Long::valueOf)
                 .toList();
         List<Review> reviewList = listByIds(listIds);
-        //保持redis排名顺序
+        // 保持redis排名顺序
         Map<Long, Review> reviewMap = reviewList.stream()
                 .collect(Collectors.toMap(
                         Review::getId,
@@ -391,20 +421,20 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .map(reviewMap::get)
                 .filter(Objects::nonNull)
                 .toList();
-        //3.获取用户id和影评id
+        // 3. 获取用户id和影评id
         Set<Long> userIds = getUserIds(sortReviewList);
         Set<Long> reviewIds = getReviewIds(sortReviewList);
-        //4.批量查询用户
+        // 4. 批量查询用户
         Map<Long, User> userMap = getUserMap(userIds);
-        //5.查询当前用户点赞过的影评
+        // 5. 查询当前用户点赞过的影评
         Set<Long> likeReviewIds = getLikeReviewIds(userId, reviewIds);
-        //7.转化为VO
+        // 7. 转化为VO
         List<ReviewVO> reviewVOList = getReviewVOList(sortReviewList, userMap, likeReviewIds, userId);
         return Result.ok(reviewVOList);
     }
     @Override
     public void updateHotReviewCache() {
-        //1.查询最近30天影评
+        // 1. 查询最近30天影评
         List<Review> reviews= lambdaQuery()
                 .gt(
                         Review::getCreateTime,
@@ -412,7 +442,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 )
                 .eq(Review::getStatus, SystemConstants.REVIEW_STATUS_NORMAL)
                 .list();
-        //2.计算score并排序
+        // 2. 计算score并排序
         List<ReviewHotDTO> hotReviews = reviews.stream()
                 .map(review -> {
                     ReviewHotDTO dto = new ReviewHotDTO();
@@ -432,7 +462,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 )
                 .limit(100)
                 .toList();
-        //3.写入redis
+        // 3. 写入redis
         String oldKey = RedisConstants.HOT_REVIEW_KEY;
         String newKey = RedisConstants.HOT_REVIEW_KEY + ":temp";
         stringRedisTemplate.delete(newKey);

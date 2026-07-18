@@ -53,14 +53,14 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     @Transactional
     @Override
     public Result publishReviewComment(ReviewCommentDTO reviewCommentDTO, Long reviewId) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.将DTO转化为ReviewComment
+        // 2. 将DTO转化为ReviewComment
         ReviewComment reviewComment = new ReviewComment();
         BeanUtils.copyProperties(reviewCommentDTO,reviewComment);
         reviewComment.setUserId(userId);
         reviewComment.setReviewId(reviewId);
-        //3.如果是回复需要校验rootId
+        // 3. 如果是回复需要校验rootId
         if(reviewComment.getRootId()!=null && reviewComment.getRootId()!=0){
             ReviewComment rootComment = getById(reviewComment.getRootId());
             if(rootComment == null|| !Objects.equals(rootComment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
@@ -70,10 +70,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 return Result.fail("非法评论");
             }
         }
-        //4.保存到数据库
+        // 4. 保存到数据库
         boolean isSuccess = save(reviewComment);
         if(isSuccess) {
-            //修改评论数
+            // 修改评论数
             isSuccess = reviewService.update()
                     .setSql("comment_count", "comment_count+1")
                     .eq("id", reviewId)
@@ -115,9 +115,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         if(review == null|| !Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("评论不存在");
         }
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.查询一级评论
+        // 2. 查询一级评论
         Page<ReviewComment> page = query()
                 .eq("review_id",reviewId)
                 .eq("reply_user_id",0)
@@ -132,11 +132,11 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             result.setRecords(Collections.emptyList());
             return Result.ok(result);
         }
-        //3.获取评论id
+        // 3. 获取评论id
         Set<Long> likeReviewCommentIds = getLongs(rcList, userId);
-        //5.查询用户
+        // 5. 查询用户
         Map<Long, User> userMap = getUserMap(rcList);
-        //6.包装为VO
+        // 6. 包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
                 rc -> {
@@ -157,7 +157,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
                     return rcVO;
                 }).toList();
-        //7.封装并返回
+        // 7. 封装并返回
         PageResult<ReviewCommentVO> result = new PageResult<>();
         result.setTotal(page.getTotal());
         result.setRecords(rcListVO);
@@ -170,9 +170,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         if(rootComment == null|| !Objects.equals(rootComment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
             return Result.fail("评论不存在");
         }
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.查询子评论
+        // 2. 查询子评论
         Page<ReviewComment> page = query()
                 .eq("root_id",rootId)
                 .ne("reply_user_id",0)
@@ -187,10 +187,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             return Result.ok(result);
         }
         Set<Long> likeReviewCommentIds = getLongs(rcList, userId);
-        //5.查询用户
+        // 5. 查询用户
         Map<Long, User> userMap = getUserMap(rcList);
         Map<Long, User> replyUserMap = getReplyUserMap(rcList);
-        //6.包装为VO
+        // 6. 包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
                         rc -> {
@@ -213,7 +213,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                             return rcVO;
                         }
                 ).toList();
-        //7.封装并返回
+        // 7. 封装并返回
         PageResult<ReviewCommentVO> result = new PageResult<>();
         result.setTotal(page.getTotal());
         result.setRecords(rcListVO);
@@ -223,20 +223,20 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     @Transactional
     @Override
     public Result likeReviewComment(Long reviewCommentId) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.判断是否已点赞
+        // 2. 判断是否已点赞
         boolean Liked = isLike(reviewCommentId, userId);
         String commentKey = RedisConstants.LIKE_COMMENT_KEY + reviewCommentId;
         if(Liked){
-            //3.1.取消点赞
-            //删除数据
+            // 3.1. 取消点赞
+            // 删除数据
             boolean isSuccess = likeRecordService.remove(new QueryWrapper<LikeRecord>()
                             .eq("target_id", reviewCommentId)
                             .eq("target_type", SystemConstants.TARGET_COMMENT)
                             .eq("user_id", userId)
             );
-            //更新关联数据
+            // 更新关联数据
             if(isSuccess){
                 boolean success = update().setSql("like_count=like_count-1")
                         .eq("id", reviewCommentId)
@@ -246,7 +246,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new RuntimeException("取消点赞失败");
                 }
                 log.info("取消点赞成功");
-                //移除缓存
+                // 移除缓存
                 stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
             }
             else{
@@ -258,12 +258,12 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             likeVO.setLikeCount(getById(reviewCommentId).getLikeCount());
             return Result.ok(likeVO);
         }else{
-            //3.2.点赞
-            //防止点赞不存在的评论
+            // 3.2. 点赞
+            // 防止点赞不存在的评论
             if(!exists(new QueryWrapper<ReviewComment>().eq("id",reviewCommentId).eq("status",SystemConstants.COMMENT_STATUS_NORMAL))){
                 return Result.fail("点赞的影评不存在");
             }
-            //防止重复点赞
+            // 防止重复点赞
             boolean exist = likeRecordService.query()
                     .eq("user_id", userId)
                     .eq("target_id", reviewCommentId)
@@ -272,13 +272,13 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             if(exist){
                 return Result.fail("不能重复点赞");
             }
-            //新增数据
+            // 新增数据
             LikeRecord likeRecord = new LikeRecord();
             likeRecord.setUserId(userId);
             likeRecord.setTargetId(reviewCommentId);
             likeRecord.setTargetType(SystemConstants.TARGET_COMMENT);
             boolean isSuccess = likeRecordService.save(likeRecord);
-            //更新关联数据
+            // 更新关联数据
             if(isSuccess){
                 boolean success = update().setSql("like_count=like_count+1")
                         .eq("id", reviewCommentId)
@@ -287,7 +287,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new RuntimeException("点赞失败");
                 }
                 log.info("点赞成功");
-                //增添缓存
+                // 增添缓存
                 stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
                 // 发送点赞消息
                 MessageDTO dto = new MessageDTO();
@@ -315,9 +315,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     @Transactional
     @Override
     public Result deleteReviewComment(Long reviewCommentId) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.确认权限
+        // 2. 确认权限
         ReviewComment comment = getById(reviewCommentId);
         if(comment==null||!Objects.equals(comment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
             return Result.fail("评论不存在");
@@ -325,37 +325,67 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         if (!comment.getUserId().equals(userId)) {
             return Result.fail("没有删除权限");
         }
-        //3.修改数据
+        // 3. 软删除当前评论
         boolean isSuccess = removeById(reviewCommentId);
-        if(isSuccess){
-            //删除点赞数据
-            likeRecordService.remove(
-                    new QueryWrapper<LikeRecord>()
-                            .eq("target_id", reviewCommentId)
-                            .eq("target_type", SystemConstants.TARGET_COMMENT)
-            );
-            //修改评论数
-            reviewService.update()
-                    .setSql("comment_count=comment_count-1")
-                    .eq("id", comment.getReviewId())
-                    .gt("comment_count", 0)
-                    .update();
-            //删除缓存
-            stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
-            log.info("删除成功");
-            return Result.ok();
-        }
-        else{
+        if(!isSuccess){
             log.info("删除失败");
             return Result.fail("删除失败");
         }
+        // 清理当前评论的点赞数据
+        likeRecordService.remove(
+                new QueryWrapper<LikeRecord>()
+                        .eq("target_id", reviewCommentId)
+                        .eq("target_type", SystemConstants.TARGET_COMMENT)
+        );
+        stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
+        int commentCountDelta = 1;
+        // 4. 级联删除子评论（只对根评论）
+        if (comment.getReplyUserId() == 0) {
+            List<ReviewComment> children = query()
+                    .eq("root_id", reviewCommentId)
+                    .ne("id", reviewCommentId)
+                    .eq("status", SystemConstants.COMMENT_STATUS_NORMAL)
+                    .list();
+            if (!children.isEmpty()) {
+                Set<Long> childIds = children.stream()
+                        .map(ReviewComment::getId)
+                        .collect(Collectors.toSet());
+                isSuccess = likeRecordService.remove(
+                        new QueryWrapper<LikeRecord>()
+                                .in("target_id", childIds)
+                                .eq("target_type", SystemConstants.TARGET_COMMENT)
+                );
+                if (!isSuccess) {
+                    throw new RuntimeException("删除子评论点赞记录失败");
+                }
+                childIds.forEach(id ->
+                        stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id)
+                );
+                int deleted = getBaseMapper().delete(
+                        new QueryWrapper<ReviewComment>()
+                                .in("id", childIds)
+                );
+                if (deleted == 0) {
+                    throw new RuntimeException("级联删除子评论失败");
+                }
+                commentCountDelta += children.size();
+            }
+        }
+        // 5. 更新影评的评论数
+        reviewService.update()
+                .setSql("comment_count = comment_count - " + commentCountDelta)
+                .eq("id", comment.getReviewId())
+                .gt("comment_count", commentCountDelta - 1)
+                .update();
+        log.info("删除成功");
+        return Result.ok();
     }
 
     @Override
     public Result myReviewComments(Integer current) {
-        //1.获取当前用户
+        // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
-        //2.根据用户id查询
+        // 2. 根据用户id查询
         Page<ReviewComment> page = query()
                 .eq("user_id",userId)
                 .orderByDesc("create_time")
@@ -369,13 +399,13 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
             result.setRecords(Collections.emptyList());
             return Result.ok(result);
         }
-        //3.查询当前用户点赞过的评论
+        // 3. 查询当前用户点赞过的评论
         Set<Long> likeReviewCommentIds = getLongs(rcList, userId);
-        //4.查询用户信息
+        // 4. 查询用户信息
         UserDTO authorDTO = new UserDTO();
         BeanUtils.copyProperties(userService.getById(userId), authorDTO);
         Map<Long, User> replyUserMap = getReplyUserMap(rcList);
-        //5.将列表转为VO
+        // 5. 将列表转为VO
         List<ReviewCommentVO> rcVOList = rcList.stream()
                 .map(comment -> {
                     ReviewCommentVO vo = new ReviewCommentVO();
@@ -393,7 +423,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     return vo;
                 })
                 .toList();
-        //6.封装并返回
+        // 6. 封装并返回
         PageResult<ReviewCommentVO> result = new PageResult<>();
         result.setTotal(page.getTotal());
         result.setRecords(rcVOList);
@@ -401,7 +431,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     }
 
     private boolean isLike(Long commentId, Long userId) {
-        //2.查redis
+        // 2. 查redis
         String commentKey = RedisConstants.LIKE_COMMENT_KEY + commentId;
         Boolean exists = stringRedisTemplate.hasKey(commentKey);
         if (exists) {
@@ -409,7 +439,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     .isMember(commentKey, userId.toString());
             return(Boolean.TRUE.equals(isLike));
         }
-        //3.redis不存在，查数据库重建缓存
+        // 3. redis不存在，查数据库重建缓存
         List<Long> ids = likeRecordService.query()
                 .eq("target_id", commentId)
                 .eq("target_type", SystemConstants.TARGET_COMMENT)
@@ -455,11 +485,11 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     }
 
     private Set<Long> getLongs(List<ReviewComment> rcList, Long userId) {
-        //3.获取评论id
+        // 3. 获取评论id
         Set<Long> reviewCommentIds = rcList.stream()
                 .map(ReviewComment::getId)
                 .collect(Collectors.toSet());
-        //4.查询用户点赞过的评论
+        // 4. 查询用户点赞过的评论
         return likeRecordService.query()
                 .eq("user_id", userId)
                 .eq("target_type",SystemConstants.TARGET_COMMENT)
