@@ -19,6 +19,7 @@ import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -214,15 +215,20 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWING_KEY + userId, "empty");
                 stringRedisTemplate.expire(RedisConstants.FOLLOWING_KEY + userId, RedisConstants.FOLLOWING_TTL, TimeUnit.MINUTES);
                 // 发送关注消息
-                MessageDTO dto = new MessageDTO();
-                dto.setUserId(id);
-                dto.setFromUserId(userId);
-                dto.setType(SystemConstants.MESSAGE_TYPE_FOLLOW);
-                dto.setTargetType(SystemConstants.MESSAGE_TARGET_USER);
-                dto.setTargetId(userId);
-                String content = "用户" + userService.getById(userId).getNickname() + "关注了你";
-                dto.setContent(content);
-                rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.follow", dto);
+                try {
+                    MessageDTO dto = new MessageDTO();
+                    dto.setUserId(id);
+                    dto.setFromUserId(userId);
+                    dto.setType(SystemConstants.MESSAGE_TYPE_FOLLOW);
+                    dto.setTargetType(SystemConstants.MESSAGE_TARGET_USER);
+                    dto.setTargetId(userId);
+                    String content = "用户" + userService.getById(userId).getNickname() + "关注了你";
+                    dto.setContent(content);
+                    rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.follow", dto);
+                } catch (AmqpException e) {
+                    log.error("发送消息失败");
+                    throw new RuntimeException(e);
+                }
             }
             else{
                 log.info("关注失败");
@@ -237,10 +243,12 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 // 减少关注者的关注数和被关注者的粉丝数
                 boolean isSuccess1 =userService.update()
                         .setSql("following_count=following_count-1")
+                        .gt("following_count", 0)
                         .eq("id", userId)
                         .update();
                 boolean isSuccess2 =userService.update()
                         .setSql("follower_count=follower_count-1")
+                        .gt("follower_count", 0)
                         .eq("id", id)
                         .update();
                 if(!isSuccess1||!isSuccess2){
