@@ -16,6 +16,9 @@ public class SystemConstants {
     public static final int MESSAGE_TARGET_REVIEW = 1;
     public static final int MESSAGE_TARGET_COMMENT = 2;
 
+    public static final Integer MESSAGE_STATUS_UNREAD = 0;
+    public static final Integer MESSAGE_STATUS_READ = 1;
+
     public static final Integer USER_STATUS_NORMAL = 1;
     public static final Integer USER_STATUS_BAN = 0;
 
