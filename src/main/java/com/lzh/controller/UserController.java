@@ -3,6 +3,8 @@ package com.lzh.controller;
 import com.lzh.common.Result;
 import com.lzh.dto.LoginFormDTO;
 import com.lzh.dto.RegisterFormDTO;
+import com.lzh.dto.UpdatePasswordDTO;
+import com.lzh.dto.UpdateProfileDTO;
 import com.lzh.service.IUserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,5 +46,13 @@ public class UserController {
     public Result logout(HttpServletRequest request) {
         String token = request.getHeader("authorization");
         return userService.logout(token);
+    }
+    @PutMapping("/profile")
+    public Result updateProfile(@RequestBody UpdateProfileDTO dto) {
+        return userService.updateProfile(dto);
+    }
+    @PutMapping("/password")
+    public Result updatePassword(@RequestBody UpdatePasswordDTO dto) {
+        return userService.updatePassword(dto);
     }
 }

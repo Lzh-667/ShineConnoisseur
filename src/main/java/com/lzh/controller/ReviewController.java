@@ -56,4 +56,8 @@ public class ReviewController {
     public Result hotReviews(){
         return reviewService.hotReviews();
     }
+    @GetMapping("/{reviewId}")
+    public Result getReviewDetail(@PathVariable("reviewId") Long reviewId){
+        return reviewService.getReviewDetail(reviewId);
+    }
 }

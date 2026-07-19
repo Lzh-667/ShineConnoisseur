@@ -121,6 +121,26 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         return Result.ok(new PageResult<>(page.getTotal(), reviewVOList));
     }
     @Override
+    public Result getReviewDetail(Long reviewId) {
+        Long userId = UserHolder.getUser().getId();
+        Review review = query()
+                .eq("id", reviewId)
+                .eq("status", SystemConstants.REVIEW_STATUS_NORMAL)
+                .one();
+        if (review == null) {
+            return Result.fail("影评不存在");
+        }
+        User author = userService.getById(review.getUserId());
+        Set<Long> likeReviewIds = getLikeReviewIds(userId, Set.of(reviewId));
+        List<ReviewVO> vos = getReviewVOList(
+                List.of(review),
+                author != null ? Map.of(author.getId(), author) : Collections.emptyMap(),
+                likeReviewIds,
+                userId
+        );
+        return Result.ok(vos.get(0));
+    }
+    @Override
     public Result myReviews(Integer current) {
         // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();

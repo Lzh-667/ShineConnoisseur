@@ -9,6 +9,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
 import com.lzh.dto.LoginFormDTO;
 import com.lzh.dto.RegisterFormDTO;
+import com.lzh.dto.UpdatePasswordDTO;
+import com.lzh.dto.UpdateProfileDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.UserMapper;
 import com.lzh.po.User;
@@ -269,6 +271,67 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public Result logout(String token) {
         stringRedisTemplate.delete(RedisConstants.LOGIN_USER_KEY + token);
         UserHolder.removeUser();
+        return Result.ok();
+    }
+    @Override
+    public Result updateProfile(UpdateProfileDTO dto) {
+        Long userId = UserHolder.getUser().getId();
+        String nickname = dto.getNickname();
+        String avatar = dto.getAvatar();
+        String bio = dto.getBio();
+        Integer gender = dto.getGender();
+        if (StrUtil.isAllBlank(nickname, avatar, bio) && gender == null) {
+            return Result.fail("至少填写一项");
+        }
+        if (nickname != null && nickname.length() > 30) {
+            return Result.fail("昵称不能超过30字");
+        }
+        if (bio != null && bio.length() > 200) {
+            return Result.fail("简介不能超过200字");
+        }
+        if (gender != null && (gender < 0 || gender > 2)) {
+            return Result.fail("性别参数无效");
+        }
+        boolean updated = lambdaUpdate()
+                .eq(User::getId, userId)
+                .set(nickname != null, User::getNickname, nickname)
+                .set(avatar != null, User::getAvatar, avatar)
+                .set(bio != null, User::getBio, bio)
+                .set(gender != null, User::getGender, gender)
+                .update();
+        if (!updated) {
+            return Result.fail("修改失败");
+        }
+        return Result.ok();
+    }
+    @Override
+    public Result updatePassword(UpdatePasswordDTO dto) {
+        String oldPassword = dto.getOldPassword();
+        String newPassword = dto.getNewPassword();
+        if (StrUtil.isBlank(oldPassword)) {
+            return Result.fail("原密码不能为空");
+        }
+        if (StrUtil.isBlank(newPassword)) {
+            return Result.fail("新密码不能为空");
+        }
+        if (RegexUtils.isPasswordInvalid(newPassword)) {
+            return Result.fail("新密码格式错误");
+        }
+        if (StrUtil.equals(oldPassword, newPassword)) {
+            return Result.fail("新密码不能与原密码相同");
+        }
+        Long userId = UserHolder.getUser().getId();
+        User user = getById(userId);
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return Result.fail("原密码错误");
+        }
+        boolean updated = lambdaUpdate()
+                .eq(User::getId, userId)
+                .set(User::getPassword, passwordEncoder.encode(newPassword))
+                .update();
+        if (!updated) {
+            return Result.fail("修改失败");
+        }
         return Result.ok();
     }
     private String createToken(User user) {

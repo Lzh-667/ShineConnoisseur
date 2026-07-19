@@ -18,6 +18,8 @@ public interface IReviewService extends IService<Review> {
 
     Result deleteReview(Long reviewId);
 
+    Result getReviewDetail(Long reviewId);
+
     Result hotReviews();
 
     void updateHotReviewCache();

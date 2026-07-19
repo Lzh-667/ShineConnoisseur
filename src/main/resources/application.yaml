@@ -39,6 +39,13 @@ spring:
           min-idle: 5
           time-between-eviction-runs: 10s
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+  web:
+    resources:
+      static-locations: file:./uploads/
 mybatis-plus:
   type-aliases-package: com.lzh.po # 别名扫描包
 logging:
