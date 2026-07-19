@@ -221,7 +221,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         User newUser = new User();
         newUser.setUsername(username);
         newUser.setPassword(passwordEncoder.encode(password));
-        newUser.setEmail(email);
+        if(StrUtil.isBlank(email)){
+            newUser.setEmail(null);
+        }
         newUser.setPhone(phone);
         newUser.setNickname(username+RandomUtil.randomNumbers(4));
         save(newUser);
