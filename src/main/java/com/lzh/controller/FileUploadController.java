@@ -1,6 +1,7 @@
 package com.lzh.controller;
 
 import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.StrUtil;
 import com.lzh.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -24,16 +25,24 @@ public class FileUploadController {
             return Result.fail("文件不能为空");
         }
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) {
+        if (StrUtil.isBlank(originalFilename)) {
             return Result.fail("文件名无效");
         }
-        String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+        int index = originalFilename.lastIndexOf(".");
+        if(index == -1){
+            return Result.fail("文件格式错误");
+        }
+        String extension = originalFilename.substring(index + 1).toLowerCase();
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             return Result.fail("仅支持 jpg、jpeg、png、gif、webp 格式");
         }
         File dir = new File(UPLOAD_DIR);
         if (!dir.exists()) {
-            dir.mkdirs();
+            boolean mkdir = dir.mkdirs();
+            if(!mkdir){
+                log.error("创建上传目录失败");
+                return Result.fail("上传失败");
+            }
         }
         String filename = UUID.fastUUID().toString(true) + "." + extension;
         try {
