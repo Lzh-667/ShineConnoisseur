@@ -285,8 +285,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (StrUtil.isAllBlank(nickname, avatar, bio) && gender == null) {
             return Result.fail("至少填写一项");
         }
-        if (nickname != null && nickname.length() > 30) {
-            return Result.fail("昵称不能超过30字");
+        if (nickname != null && nickname.length() > 20) {
+            return Result.fail("昵称不能超过20字");
         }
         if (bio != null && bio.length() > 200) {
             return Result.fail("简介不能超过200字");
@@ -324,6 +324,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         Long userId = UserHolder.getUser().getId();
         User user = getById(userId);
+        if(user==null){
+            return Result.fail("用户不存在");
+        }
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             return Result.fail("原密码错误");
         }
