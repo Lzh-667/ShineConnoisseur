@@ -1,0 +1,57 @@
+package com.lzh.utils;
+
+public class RedisConstants {
+    /**登录验证码*/
+    public static final String LOGIN_CODE_KEY = "login:code:";
+    public static final Long LOGIN_CODE_TTL = 1L;
+    /**登录成功存token*/
+    public static final String LOGIN_USER_KEY = "login:token:";
+    public static final Long LOGIN_USER_TTL = 30L;
+    /**用户ID→Token反向映射，用于封禁时清除登录态*/
+    public static final String USER_TOKEN_KEY = "user:token:";
+    /**用户验证码登录错误次数*/
+    public static final String LOGIN_USER_CODE_ERR_KEY = "login:user:code:err:";
+    public static final Long LOGIN_USER_CODE_ERR_TTL = 10L;
+    /**用户密码登录错误次数*/
+    public static final String LOGIN_USER_PASSWORD_ERR_KEY = "login:user:password:err:";
+    public static final Long LOGIN_USER_PASSWORD_ERR_TTL = 10L;
+    /**用户注册发送验证码*/
+    public static final String REGISTER_CODE_KEY = "register:code:";
+    public static final Long REGISTER_CODE_TTL = 5L;
+    /**用户注册错误次数*/
+    public static final String REGISTER_USER_ERR_KEY = "register:user:err:";
+    public static final Long REGISTER_USER_ERR_TTL = 10L;
+    /**管理员登录成功存token*/
+    public static final String ADMIN_LOGIN_KEY = "admin:token:";
+    public static final Long ADMIN_LOGIN_TTL = 30L;
+    /**管理员登录错误次数*/
+    public static final String LOGIN_ADMIN_PASSWORD_ERR_KEY = "login:admin:password:err:";
+    public static final Long LOGIN_ADMIN_PASSWORD_ERR_TTL = 10L;
+    /**关注*/
+    public static final String FOLLOWING_KEY = "followings:";
+    public static final Long FOLLOWING_TTL = 60L;
+    /**粉丝*/
+    public static final String FOLLOWER_KEY = "followers:";
+    public static final Long FOLLOWER_TTL = 60L;
+    /**影评*/
+    public static final String LIKE_REVIEW_KEY = "review:like:";
+    public static final Long LIKE_REVIEW_TTL = 60L;
+    public static final String HOT_REVIEW_KEY = "review:hot:";
+    /**电影*/
+    public static final String MOVIE_INFO_KEY = "movie:info:";
+    public static final Long MOVIE_INFO_TTL = 30L;
+    public static final Long MOVIE_INFO_EMPTY_TTL = 10L;
+    public static final String HOT_MOVIE_KEY = "movie:hot:";
+    public static final String USER_FAVORITE_MOVIE_KEY = "user:favorite:movie:";
+    public static final Long USER_FAVORITE_MOVIE_TTL = 60L;
+    /** 评论 */
+    public static final String LIKE_COMMENT_KEY = "comment:like:";
+    public static final Long LIKE_COMMENT_TTL = 60L;
+    /** 重置密码 */
+    public static final String RESET_CODE_KEY = "reset:code:";
+    public static final Long RESET_CODE_TTL = 1L;
+    public static final String RESET_USER_ERR_KEY = "reset:user:err:";
+    public static final Long RESET_USER_ERR_TTL = 10L;
+    /** dashboard统计*/
+    public static final String ADMIN_DASHBOARD_KEY = "admin:dashboard:";
+}

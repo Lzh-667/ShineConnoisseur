@@ -1,0 +1,299 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  line-height: 1.6;
+}
+
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+button { font-family: inherit; }
+
+/* =============================================
+   Design Tokens
+   ============================================= */
+:root {
+  --color-gold: #f5af19;
+  --color-gold-hover: #f7c04a;
+  --gradient-gold: linear-gradient(135deg, #f5af19, #f12711);
+  --gradient-gold-subtle: linear-gradient(135deg, #f5af19, #f57f17);
+
+  --bg-deepest: #0f0f1a;
+  --bg-primary: #1a1a2e;
+  --bg-elevated: #1e1e30;
+
+  --text-primary: rgba(255,255,255,.85);
+  --text-secondary: rgba(255,255,255,.65);
+  --text-tertiary: rgba(255,255,255,.4);
+  --text-muted: rgba(255,255,255,.3);
+  --text-disabled: rgba(255,255,255,.15);
+
+  --color-danger: #f56c6c;
+  --color-success: #67c23a;
+  --color-spoiler-text: #ff6b6b;
+  --color-spoiler-bg: rgba(255,107,107,.15);
+
+  --border-subtle: rgba(255,255,255,.04);
+  --border-light: rgba(255,255,255,.06);
+  --border-visible: rgba(255,255,255,.08);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 20px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.25);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.25);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.3);
+
+  --font-size-title: 22px;
+  --font-size-body: 15px;
+  --font-size-small: 13px;
+
+  --space-page-v: 40px;
+  --space-page-bottom: 80px;
+}
+
+/* =============================================
+   Element Plus Dark Overrides
+   ============================================= */
+:root {
+  --el-bg-color: var(--bg-primary);
+  --el-bg-color-overlay: #2a2a3e;
+  --el-text-color-primary: #e0e0e0;
+  --el-text-color-regular: #c0c0c0;
+  --el-border-color: var(--border-visible);
+  --el-fill-color-blank: #2a2a3e;
+}
+
+.el-dropdown-menu {
+  background: #2a2a3e !important;
+  border: 1px solid var(--border-visible) !important;
+}
+.el-dropdown-menu__item { color: rgba(255,255,255,.8) !important; }
+.el-dropdown-menu__item:hover {
+  background: rgba(255,255,255,.06) !important;
+  color: var(--color-gold) !important;
+}
+.el-dropdown-menu__item.is-divided {
+  border-top: 1px solid var(--border-visible) !important;
+}
+.el-avatar { background: rgba(255,255,255,.1) !important; color: rgba(255,255,255,.5) !important; }
+
+/* ====== El-Select Dropdown ====== */
+.el-select-dropdown {
+  background: #1a1a2e !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+}
+.el-select-dropdown__item {
+  color: rgba(255,255,255,.6) !important;
+}
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background: rgba(245,175,25,.1) !important;
+  color: #f5af19 !important;
+}
+.el-select-dropdown__item.selected {
+  color: #f5af19 !important;
+  font-weight: 600 !important;
+}
+
+/* =============================================
+   Global El-Pagination Dark Theme
+   ============================================= */
+.el-pagination {
+  --el-pagination-bg-color: rgba(255,255,255,.04) !important;
+  --el-pagination-text-color: var(--text-tertiary) !important;
+  --el-pagination-hover-color: var(--color-gold) !important;
+  --el-pagination-button-bg-color: rgba(255,255,255,.04) !important;
+  --el-pagination-button-disabled-bg-color: rgba(255,255,255,.02) !important;
+  --el-pagination-button-disabled-color: var(--text-disabled) !important;
+}
+.el-pagination .el-pager li {
+  background: rgba(255,255,255,.04) !important;
+  color: var(--text-tertiary) !important;
+  border-radius: var(--radius-sm) !important;
+}
+.el-pagination .el-pager li:hover {
+  color: var(--color-gold) !important;
+  background: rgba(245,175,25,.1) !important;
+}
+.el-pagination .el-pager li.is-active {
+  background: var(--color-gold) !important;
+  color: #fff !important;
+}
+.el-pagination button {
+  background: rgba(255,255,255,.04) !important;
+  color: var(--text-tertiary) !important;
+  border-radius: var(--radius-sm) !important;
+}
+.el-pagination button:hover { color: var(--color-gold) !important; }
+.el-pagination button:disabled {
+  color: var(--text-disabled) !important;
+  background: rgba(255,255,255,.02) !important;
+}
+
+/* =============================================
+   Global Admin Table Styles
+   ============================================= */
+.admin-table,
+.el-table { background: transparent !important; --el-table-bg-color: transparent !important; --el-table-tr-bg-color: transparent !important; }
+.el-table__header th {
+  background: rgba(255,255,255,.03) !important;
+  color: var(--text-tertiary) !important;
+  border-bottom: 2px solid rgba(245,175,25,.25) !important;
+  font-weight: 600 !important; font-size: 12px !important; text-transform: uppercase; letter-spacing: .5px;
+}
+.el-table__body td {
+  background: transparent !important;
+  border-color: rgba(255,255,255,.03) !important;
+  color: rgba(255,255,255,.65);
+}
+.el-table__body tr:hover td { background: rgba(255,255,255,.025) !important; }
+.el-table__inner-wrapper::before { display: none !important; }
+.el-table .cell { color: inherit !important; }
+
+/* =============================================
+   Global Dialog Dark Theme
+   ============================================= */
+.el-dialog {
+  --el-dialog-bg-color: #18182a !important;
+  background: #18182a !important;
+  border: 1px solid rgba(255,255,255,.06) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6) !important;
+}
+.el-dialog__header { padding: 24px 28px 16px !important; }
+.el-dialog__title { color: rgba(255,255,255,.8) !important; font-size: 17px !important; font-weight: 600 !important; }
+.el-dialog__headerbtn { font-size: 18px !important; }
+.el-dialog__headerbtn .el-dialog__close { color: rgba(255,255,255,.3) !important; }
+.el-dialog__headerbtn .el-dialog__close:hover { color: #f56c6c !important; }
+.el-dialog__body { padding: 20px 28px 28px !important; color: rgba(255,255,255,.65); }
+.el-dialog__footer { padding: 0 28px 24px !important; }
+
+/* =============================================
+   Global MessageBox Dark Theme
+   ============================================= */
+.el-message-box {
+  --el-messagebox-bg-color: #18182a !important;
+  background: #18182a !important;
+  border: 1px solid rgba(255,255,255,.06) !important;
+}
+.el-message-box__title { color: rgba(255,255,255,.8) !important; }
+.el-message-box__message { color: rgba(255,255,255,.55) !important; }
+.el-message-box__close { color: rgba(255,255,255,.3) !important; }
+.el-message-box__close:hover { color: #f56c6c !important; }
+
+/* =============================================
+   Global Loading Mask Dark Theme
+   ============================================= */
+.el-loading-mask { background-color: rgba(11,11,20,.7) !important; }
+
+/* =============================================
+   Global El-Tag Dark Theme
+   ============================================= */
+.el-tag--success {
+  background: rgba(103,194,58,.12) !important;
+  border-color: rgba(103,194,58,.25) !important;
+  color: #95d475 !important;
+}
+.el-tag--danger {
+  background: rgba(245,108,108,.12) !important;
+  border-color: rgba(245,108,108,.25) !important;
+  color: #f89898 !important;
+}
+.el-tag--info {
+  background: rgba(255,255,255,.06) !important;
+  border-color: var(--border-visible) !important;
+  color: var(--text-tertiary) !important;
+}
+
+/* =============================================
+   Page Transition
+   ============================================= */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity .25s ease, transform .25s ease;
+}
+.page-enter-from { opacity: 0; transform: translateY(10px); }
+.page-leave-to { opacity: 0; transform: translateY(-8px); }
+
+/* =============================================
+   Shared Button: Load More
+   ============================================= */
+.load-more-btn {
+  display: block; width: 100%;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border-light);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-small);
+  cursor: pointer; padding: 10px;
+  border-radius: var(--radius-md);
+  transition: all .25s ease;
+  text-align: center;
+}
+.load-more-btn:hover {
+  background: rgba(255,255,255,.08);
+  color: var(--text-secondary);
+}
+
+/* =============================================
+   Shared Empty / Loading State
+   ============================================= */
+.empty-state { text-align: center; padding: 80px 0; color: var(--text-muted); font-size: 14px; }
+.loading-text { text-align: center; padding: 80px 0; color: var(--text-muted); }
+
+/* =============================================
+   Dialog Dark Theme (global)
+   ============================================= */
+.el-dialog { background: var(--bg-elevated) !important; border: 1px solid var(--border-visible) !important; border-radius: var(--radius-xl) !important; }
+
+/* =============================================
+   Skeleton Animation
+   ============================================= */
+@keyframes shimmer {
+  0% { opacity: 1; }
+  50% { opacity: .4; }
+  100% { opacity: 1; }
+}
+.skeleton-line {
+  background: rgba(255,255,255,.08) !important;
+  border-radius: 4px;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+.skeleton-card {
+  background: rgba(255,255,255,.05);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+/* =============================================
+   Responsive Grid Utilities
+   ============================================= */
+.movie-grid { display: grid; gap: 20px; }
+@media (min-width: 1200px) { .movie-grid { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 900px) and (max-width: 1199px) { .movie-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 600px) and (max-width: 899px) { .movie-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 599px) { .movie-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* =============================================
+   Dialog Header Gradient
+   ============================================= */
+.dialog-gradient-header :deep(.el-dialog__header) {
+  background: linear-gradient(135deg, rgba(245,175,25,.12), rgba(245,175,25,.04));
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}

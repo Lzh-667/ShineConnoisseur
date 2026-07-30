@@ -1,0 +1,62 @@
+server:
+  port: 8080
+spring:
+  output:
+    ansi:
+      enabled: always
+  application:
+    name: shineconnoisseur
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:192.168.100.129}:${MYSQL_PORT:3306}/shineconnoisseur?useUnicode=true&characterEncoding=utf8&autoReconnect=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:123456}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:192.168.100.129}
+    port: ${RABBITMQ_PORT:5672}
+    virtual-host: ${RABBITMQ_VHOST:/shine}
+    username: ${RABBITMQ_USER:lzh}
+    password: ${RABBITMQ_PASSWORD:123}
+    connection-timeout: 1s
+    template:
+      retry:
+        enabled: true # 开启超时重试机制
+        initial-interval: 1000ms # 失败后的初始等待时间
+        multiplier: 1 # 失败后下次的等待时长倍数，下次等待时长 = initial-interval * multiplier
+        max-attempts: 3 # 最大重试次数
+
+
+  data:
+    redis:
+      host: ${REDIS_HOST:192.168.100.129}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:123456}
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 20
+          min-idle: 5
+          time-between-eviction-runs: 10s
+
+  elasticsearch:
+    uris: http://${ES_HOST:192.168.100.129}:${ES_PORT:9200}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+mybatis-plus:
+  type-aliases-package: com.lzh.po # 别名扫描包
+logging:
+  level:
+    com.lzh: debug
+
+file:
+  base-path: ${FILE_BASE_PATH:D:/JavaProgram/ShineConnoisseur/backend/ShineConnoisseur/uploads/}
+springdoc:
+  swagger-ui:
+    path: /docs
+    tags-sorter: alpha
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs

@@ -1,0 +1,43 @@
+# 环境变量（含密码，禁止提交）
+.env
+
+# Java / Maven
+**/target/
+*.class
+*.jar
+*.war
+*.log
+
+# Node / Vue
+node_modules/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes（本地数据不提交）
+docker/mysql/data/
+docker/redis/data/
+docker/rabbitmq/data/
+docker/es/data/
+
+# Uploaded files
+uploads/
+
+# Raw SQL dump
+dump_raw.sql
+
+# Claude local settings
+.claude/*.local.json
+
+# Logs
+logs/
+*.log
