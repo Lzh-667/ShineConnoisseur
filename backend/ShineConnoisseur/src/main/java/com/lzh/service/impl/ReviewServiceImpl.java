@@ -452,15 +452,12 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             if(!success1||!success2){
                 throw new BusinessException("更新关联数据失败");
             }
-            // 删除点赞数据和缓存
-            isSuccess=likeRecordService.remove(
+            // 删除点赞数据和缓存（可能没有点赞记录，不检查返回值）
+            likeRecordService.remove(
                     new QueryWrapper<LikeRecord>()
                             .eq("target_id", reviewId)
                             .eq("target_type", SystemConstants.TARGET_REVIEW)
             );
-            if(!isSuccess){
-                throw new BusinessException("删除点赞数据失败");
-            }
             // 级联删除该影评下的所有正常评论及其点赞数据
             List<ReviewComment> comments = reviewCommentMapper.selectList(
                     new QueryWrapper<ReviewComment>().eq("review_id", reviewId)
@@ -469,14 +466,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 Set<Long> commentIds = comments.stream()
                         .map(ReviewComment::getId)
                         .collect(Collectors.toSet());
-                isSuccess = likeRecordService.remove(
+                likeRecordService.remove(
                         new QueryWrapper<LikeRecord>()
                                 .in("target_id", commentIds)
                                 .eq("target_type", SystemConstants.TARGET_COMMENT)
                 );
-                if (!isSuccess) {
-                    throw new BusinessException("删除评论点赞记录失败");
-                }
                 commentIds.forEach(id ->
                         stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id)
                 );

@@ -409,14 +409,11 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 Set<Long> childIds = children.stream()
                         .map(ReviewComment::getId)
                         .collect(Collectors.toSet());
-                isSuccess = likeRecordService.remove(
+                likeRecordService.remove(
                         new QueryWrapper<LikeRecord>()
                                 .in("target_id", childIds)
                                 .eq("target_type", SystemConstants.TARGET_COMMENT)
                 );
-                if (!isSuccess) {
-                    throw new BusinessException("删除子评论点赞记录失败");
-                }
                 childIds.forEach(id ->
                         stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id)
                 );

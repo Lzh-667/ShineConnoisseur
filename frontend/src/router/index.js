@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '../stores/modules/user'
-import { useAdminStore } from '../stores/modules/admin'
-import { getAdminToken } from '../utils/auth'
+import { getToken, getAdminToken } from '../utils/auth'
 
 const routes = [
   {
@@ -55,11 +53,11 @@ const routes = [
 const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to) => {
-  const userStore = useUserStore()
-  if (to.meta.guest && userStore.isLoggedIn) {
+  const hasToken = !!getToken()
+  if (to.meta.guest && hasToken) {
     return { name: 'Home' }
   }
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+  if (to.meta.requiresAuth && !hasToken) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresAdmin && !getAdminToken()) {
