@@ -481,11 +481,6 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new BusinessException("级联删除评论失败");
                 }
             }
-            // 将影评likeCount和commentCount清零
-            isSuccess=update().set("like_count", 0).set("comment_count", 0).eq("id", reviewId).update();
-            if(!isSuccess){
-                throw new BusinessException("更新关联数据失败");
-            }
             stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + reviewId);
             stringRedisTemplate.opsForZSet().remove(RedisConstants.HOT_REVIEW_KEY,reviewId.toString());
             stringRedisTemplate.delete(RedisConstants.MOVIE_INFO_KEY + movieId);

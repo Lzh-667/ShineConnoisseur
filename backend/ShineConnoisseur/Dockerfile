@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
@@ -5,11 +6,13 @@ COPY pom.xml .
 COPY .mvn .mvn
 COPY mvnw mvnw.cmd ./
 
-RUN mvn dependency:go-offline -B -q || true
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn dependency:go-offline -B -q || true
 
 COPY src src
 
-RUN mvn package -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn package -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
