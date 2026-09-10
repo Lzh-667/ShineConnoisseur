@@ -143,6 +143,33 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: shineconnoisseur-agent
+    restart: unless-stopped
+    ports:
+      - "${AGENT_PORT:-8001}:8001"
+    environment:
+      MYSQL_HOST: shineconnoisseur-mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-shineconnoisseur}
+      REDIS_HOST: shineconnoisseur-redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+      ES_URL: http://shineconnoisseur-es:9200
+      BACKEND_URL: http://shineconnoisseur-backend:8080
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
+      TZ: ${TZ:-Asia/Shanghai}
+    networks:
+      - shine-network
+    depends_on:
+      - backend
+
   frontend:
     build:
       context: ./frontend
@@ -157,6 +184,7 @@ services:
       - shine-network
     depends_on:
       - backend
+      - agent
 
 volumes:
   mysql-data:
