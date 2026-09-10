@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '../stores/modules/user'
-import { useAdminStore } from '../stores/modules/admin'
-import { getAdminToken } from '../utils/auth'
+import { getToken, getAdminToken } from '../utils/auth'
 
 const routes = [
   {
@@ -11,6 +9,7 @@ const routes = [
       { path: '', name: 'Home', component: () => import('../views/Home.vue') },
       { path: 'movies', name: 'Movies', component: () => import('../views/MovieList.vue') },
       { path: 'reviews/search', name: 'ReviewSearch', component: () => import('../views/ReviewSearch.vue') },
+      { path: 'chat', name: 'Chat', component: () => import('../views/Chat.vue') },
       { path: 'movies/:id', name: 'MovieDetail', component: () => import('../views/MovieDetail.vue') },
       { path: 'reviews/:id', name: 'ReviewDetail', component: () => import('../views/ReviewDetail.vue') },
       { path: 'users/:id', name: 'UserProfile', component: () => import('../views/UserProfile.vue') },
@@ -55,11 +54,11 @@ const routes = [
 const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to) => {
-  const userStore = useUserStore()
-  if (to.meta.guest && userStore.isLoggedIn) {
+  const hasToken = !!getToken()
+  if (to.meta.guest && hasToken) {
     return { name: 'Home' }
   }
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+  if (to.meta.requiresAuth && !hasToken) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresAdmin && !getAdminToken()) {
