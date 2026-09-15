@@ -19,7 +19,6 @@ public class UserVip {
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
-
     /**
      * 用户ID
      */
