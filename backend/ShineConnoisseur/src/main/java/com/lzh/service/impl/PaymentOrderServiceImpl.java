@@ -1,7 +1,7 @@
 package com.lzh.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
@@ -46,7 +46,7 @@ public class PaymentOrderServiceImpl extends ServiceImpl<PaymentOrderMapper, Pay
         //4.创建order
         PaymentOrder paymentOrder = new PaymentOrder();
         //5.生成orderNo
-        String orderNo = System.currentTimeMillis()+ RandomUtil.randomNumbers(6);
+        String orderNo = IdUtil.getSnowflakeNextIdStr();
         paymentOrder.setOrderNo(orderNo);
         //6.设置金额，支付方式，过期时间
         paymentOrder.setUserId(userId);
