@@ -62,6 +62,7 @@ public class PaymentOrderController {
         return wechatPayService.wechat(orderNo);
     }
     @PostMapping("/wechat/notify")
+    @Operation(summary = "微信异步通知notify")
     public String wechatNotify(
             @RequestBody String body,
             @RequestHeader("Wechatpay-Signature") String signature,
@@ -76,5 +77,14 @@ public class PaymentOrderController {
                 serialNumber
         );
     }
-
+    @GetMapping("/show")
+    @Operation(summary = "订单查询")
+    public Result showOrder(@RequestParam String orderNo){
+        return paymentOrderService.showOrder(orderNo);
+    }
+    @DeleteMapping("/delete")
+    @Operation(summary = "订单取消")
+    public Result deleteOrder(@RequestParam String orderNo){
+        return paymentOrderService.deleteOrder(orderNo);
+    }
 }

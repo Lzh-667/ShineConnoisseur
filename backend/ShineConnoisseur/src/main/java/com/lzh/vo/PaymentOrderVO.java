@@ -8,8 +8,12 @@ import java.time.LocalDateTime;
 @Data
 public class PaymentOrderVO {
 
+    private Long id;
     private String orderNo;
+    private Long userId;
+    private Long productId;
     private BigDecimal amount;
     private Integer paymentMethod;
+    private Integer status;
     private LocalDateTime expireTime;
 }

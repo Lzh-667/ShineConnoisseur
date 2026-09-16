@@ -6,4 +6,8 @@ import com.lzh.po.PaymentOrder;
 
 public interface IPaymentOrderService extends IService<PaymentOrder> {
     Result createOrder(Long productId, Integer paymentMethod);
+
+    Result showOrder(String orderNo);
+
+    Result deleteOrder(String orderNo);
 }

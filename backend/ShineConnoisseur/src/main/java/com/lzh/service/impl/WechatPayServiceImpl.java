@@ -196,7 +196,6 @@ public class WechatPayServiceImpl implements WechatPayService {
             //12.校验支付金额
             if (transaction.getAmount() == null
                     || transaction.getAmount().getTotal() == null) {
-
                 log.error("微信支付回调金额为空：orderNo={}", orderNo);
                 return "fail";
             }

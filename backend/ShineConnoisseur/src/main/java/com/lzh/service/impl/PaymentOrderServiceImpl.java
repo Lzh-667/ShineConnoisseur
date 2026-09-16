@@ -2,6 +2,7 @@ package com.lzh.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
@@ -16,6 +17,7 @@ import com.lzh.vo.PaymentOrderVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -60,5 +62,68 @@ public class PaymentOrderServiceImpl extends ServiceImpl<PaymentOrderMapper, Pay
         //8.返回订单信息
         PaymentOrderVO vo = BeanUtil.copyProperties(paymentOrder,PaymentOrderVO.class);
         return Result.ok(vo);
+    }
+    @Override
+    public Result showOrder(String orderNo) {
+        //1.参数校验
+        if(StrUtil.isBlank(orderNo)){
+            return Result.fail("订单号不能为空");
+        }
+        //2.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //3.根据orderNo查询订单
+        PaymentOrder paymentOrder = getOne(
+                new LambdaQueryWrapper<PaymentOrder>()
+                        .eq(PaymentOrder::getOrderNo,orderNo)
+                        .eq(PaymentOrder::getUserId,userId)
+        );
+        //4.判断是否为空
+        if(paymentOrder==null){
+            return Result.fail("订单不存在");
+        }
+        //5.校验订单是否过期
+        if(Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_PAYING) &&paymentOrder.getExpireTime()!=null&&paymentOrder.getExpireTime().isBefore(LocalDateTime.now())){
+            paymentOrder.setStatus(SystemConstants.ORDER_STATUS_CLOSE);
+            updateById(paymentOrder);
+        }
+        //3.包装为VO返回
+        PaymentOrderVO vo = BeanUtil.copyProperties(paymentOrder,PaymentOrderVO.class);
+        return Result.ok(vo);
+    }
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Result deleteOrder(String orderNo) {
+        //1.参数校验
+        if(StrUtil.isBlank(orderNo)){
+            return Result.fail("订单号不能为空");
+        }
+        //2.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        //3.根据orderNo获取订单
+        PaymentOrder paymentOrder = getOne(
+                new LambdaQueryWrapper<PaymentOrder>()
+                        .eq(PaymentOrder::getOrderNo,orderNo)
+                        .eq(PaymentOrder::getUserId,userId)
+        );
+        //4.判断是否为空
+        if(paymentOrder==null){
+            return Result.fail("订单不存在");
+        }
+        //5.判断状态
+        if(Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)){
+            return Result.fail("订单已支付，无法取消");
+        }
+        if(Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_CLOSE)){
+            return Result.fail("订单已关闭");
+        }
+        if(Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_REFUND)){
+            return Result.fail("订单已退款，无法取消");
+        }
+        //6.删除订单
+        paymentOrder.setStatus(SystemConstants.ORDER_STATUS_CLOSE);
+        updateById(paymentOrder);
+        log.info("用户取消支付订单，orderNo={}, userId={}", orderNo, userId);
+
+        return Result.ok("取消订单成功");
     }
 }
