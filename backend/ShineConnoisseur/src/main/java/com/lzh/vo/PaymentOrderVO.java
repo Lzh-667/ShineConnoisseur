@@ -12,6 +12,7 @@ public class PaymentOrderVO {
     private String orderNo;
     private Long userId;
     private Long productId;
+    private Integer durationDays;
     private BigDecimal amount;
     private Integer paymentMethod;
     private Integer status;

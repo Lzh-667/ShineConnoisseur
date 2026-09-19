@@ -4,31 +4,30 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lzh.common.Result;
 import com.lzh.config.WeChatPayConfig;
 import com.lzh.mapper.PaymentOrderMapper;
-import com.lzh.mapper.UserVipMapper;
-import com.lzh.mapper.VipProductMapper;
 import com.lzh.po.PaymentOrder;
-import com.lzh.po.UserVip;
-import com.lzh.po.VipProduct;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
+import com.wechat.pay.java.core.exception.ServiceException;
 import com.wechat.pay.java.core.notification.NotificationConfig;
 import com.wechat.pay.java.core.notification.NotificationParser;
 import com.wechat.pay.java.core.notification.RequestParam;
 import com.wechat.pay.java.service.payments.model.Transaction;
 import com.wechat.pay.java.service.payments.nativepay.NativePayService;
 import com.wechat.pay.java.service.payments.nativepay.model.Amount;
+import com.wechat.pay.java.service.payments.nativepay.model.CloseOrderRequest;
 import com.wechat.pay.java.service.payments.nativepay.model.PrepayRequest;
 import com.wechat.pay.java.service.payments.nativepay.model.PrepayResponse;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 @Slf4j
@@ -40,9 +39,7 @@ public class WechatPayServiceImpl implements WechatPayService {
     @Resource
     private WeChatPayConfig weChatPayConfig;
     @Resource
-    private VipProductMapper vipProductMapper;
-    @Resource
-    private UserVipMapper userVipMapper;
+    private PaymentFulfillmentService paymentFulfillmentService;
     @Override
     public Result wechat(String orderNo) {
         //1.查询订单
@@ -92,8 +89,15 @@ public class WechatPayServiceImpl implements WechatPayService {
             //8.创建预支付订单
             PrepayRequest request = new PrepayRequest();
             request.setOutTradeNo(paymentOrder.getOrderNo());
+            request.setAppid(weChatPayConfig.getAppId());
+            request.setMchid(weChatPayConfig.getMerchantId());
             request.setDescription("光影鉴赏家VIP会员");
             request.setNotifyUrl(weChatPayConfig.getNotifyUrl());
+            request.setTimeExpire(
+                    paymentOrder.getExpireTime()
+                            .atZone(ZoneId.systemDefault())
+                            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            );
             //9.设置金额
             Amount amount = new Amount();
             int total = paymentOrder.getAmount()
@@ -112,12 +116,11 @@ public class WechatPayServiceImpl implements WechatPayService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public String notify(String body,
-                         String signature,
-                         String timestamp,
-                         String nonce,
-                         String serialNumber) {
+    public boolean notify(String body,
+                          String signature,
+                          String timestamp,
+                          String nonce,
+                          String serialNumber) {
         try {
             //1.构造微信支付回调请求参数
             RequestParam requestParam = new RequestParam.Builder()
@@ -162,125 +165,82 @@ public class WechatPayServiceImpl implements WechatPayService {
                         orderNo,
                         tradeState
                 );
-                return "success";
+                return true;
             }
-            //9.查询本地订单
-            PaymentOrder paymentOrder = paymentOrderMapper.selectOne(
-                    new LambdaQueryWrapper<PaymentOrder>()
-                            .eq(PaymentOrder::getOrderNo, orderNo)
-            );
-            if (paymentOrder == null) {
-                log.error("微信支付回调订单不存在：orderNo={}", orderNo);
-                return "fail";
-            }
-            //10.幂等处理
-            if (Objects.equals(
-                    paymentOrder.getStatus(),
-                    SystemConstants.ORDER_STATUS_SUCCESS)) {
 
-                log.info("微信支付订单已经处理：orderNo={}", orderNo);
-                return "success";
-            }
-            //11.校验订单状态
-            if (!Objects.equals(
-                    paymentOrder.getStatus(),
-                    SystemConstants.ORDER_STATUS_PAYING)) {
-
-                log.warn(
-                        "微信支付订单状态异常：orderNo={}, status={}",
+            //9.校验应用和收款商户
+            if (!Objects.equals(transaction.getAppid(), weChatPayConfig.getAppId())
+                    || !Objects.equals(transaction.getMchid(), weChatPayConfig.getMerchantId())) {
+                log.error(
+                        "微信支付回调商户身份不匹配：orderNo={}, appid={}, mchid={}",
                         orderNo,
-                        paymentOrder.getStatus()
+                        transaction.getAppid(),
+                        transaction.getMchid()
                 );
-                return "fail";
+                return false;
             }
-            //12.校验支付金额
+
+            //10.校验并转换支付金额
             if (transaction.getAmount() == null
                     || transaction.getAmount().getTotal() == null) {
                 log.error("微信支付回调金额为空：orderNo={}", orderNo);
-                return "fail";
+                return false;
             }
             BigDecimal actualAmount = BigDecimal.valueOf(
                     transaction.getAmount().getTotal()
             ).divide(
                     BigDecimal.valueOf(100)
             );
-            if (paymentOrder.getAmount().compareTo(actualAmount) != 0) {
-                log.error(
-                        "微信支付金额不一致：orderNo={}, expected={}, actual={}",
-                        orderNo,
-                        paymentOrder.getAmount(),
-                        actualAmount
-                );
-                return "fail";
-            }
-            //13.更新订单状态
-            paymentOrder.setStatus(
-                    SystemConstants.ORDER_STATUS_SUCCESS
+            //11.统一服务通过条件更新完成幂等入账和权益发放
+            paymentFulfillmentService.fulfill(
+                    orderNo,
+                    SystemConstants.VIP_PAY_METHOD_WECHAT,
+                    transactionId,
+                    actualAmount
             );
-            paymentOrder.setPayTime(LocalDateTime.now());
-            paymentOrderMapper.updateById(paymentOrder);
-            //14.开通 / 延长 VIP
-            openVip(paymentOrder);
-            //15.告诉微信：处理成功
-            return "success";
+            return true;
         } catch (Exception e) {
             log.error("微信支付回调处理失败", e);
             throw new RuntimeException("微信支付回调处理失败", e);
         }
     }
-    private void openVip(PaymentOrder paymentOrder) {
-        //1.获取用户ID
-        Long userId = paymentOrder.getUserId();
-        //2.查询购买的VIP套餐
-        VipProduct vipProduct = vipProductMapper.selectById(paymentOrder.getProductId());
-        if (vipProduct == null) {
-            throw new RuntimeException("VIP套餐不存在");
-        }
-        //3.获取会员时长
-        Integer duration = vipProduct.getDurationDays();
-        if (duration == null || duration <= 0) {
-            throw new RuntimeException("VIP套餐时长异常");
-        }
-        //4.查询用户现有VIP记录
-        UserVip userVip = userVipMapper.selectOne(
-                new LambdaQueryWrapper<UserVip>()
-                        .eq(UserVip::getUserId, userId)
-        );
-        LocalDateTime now = LocalDateTime.now();
-        //5.用户还没有VIP记录
-        if (userVip == null) {
-            userVip = new UserVip();
-            userVip.setUserId(userId);
-            userVip.setStartTime(now);
-            userVip.setExpireTime(now.plusDays(duration));
-            userVipMapper.insert(userVip);
-            log.info(
-                    "用户开通VIP成功，userId={}, expireTime={}",
-                    userId,
-                    userVip.getExpireTime()
+
+    @Override
+    public boolean closeOrder(String orderNo) {
+        CloseOrderRequest request = new CloseOrderRequest();
+        request.setMchid(weChatPayConfig.getMerchantId());
+        request.setOutTradeNo(orderNo);
+        try {
+            NativePayService service = new NativePayService.Builder()
+                    .config(createConfig())
+                    .build();
+            service.closeOrder(request);
+            return true;
+        } catch (ServiceException e) {
+            // 未调用过预下单时，微信侧没有订单，本地可以安全关闭。
+            if ("ORDER_NOT_EXISTS".equals(e.getErrorCode())
+                    || "ORDER_NOT_EXIST".equals(e.getErrorCode())) {
+                return true;
+            }
+            log.warn(
+                    "微信支付关单失败，orderNo={}, code={}, message={}",
+                    orderNo,
+                    e.getErrorCode(),
+                    e.getErrorMessage()
             );
-            return;
+            return false;
+        } catch (Exception e) {
+            log.error("微信支付关单异常，orderNo={}", orderNo, e);
+            return false;
         }
-        //6.已经有VIP记录
-        LocalDateTime expireTime = userVip.getExpireTime();
-        //7.VIP已经过期，从当前时间重新开始计算
-        if (expireTime == null || expireTime.isBefore(now)) {
-            userVip.setStartTime(now);
-            userVip.setExpireTime(
-                    now.plusDays(duration)
-            );
-        } else {
-            //8.VIP还没有过期，在原到期时间基础上续期
-            userVip.setExpireTime(
-                    expireTime.plusDays(duration)
-            );
-        }
-        //9.更新VIP记录
-        userVipMapper.updateById(userVip);
-        log.info(
-                "用户VIP续期成功，userId={}, expireTime={}",
-                userId,
-                userVip.getExpireTime()
-        );
+    }
+
+    private RSAAutoCertificateConfig createConfig() {
+        return new RSAAutoCertificateConfig.Builder()
+                .merchantId(weChatPayConfig.getMerchantId())
+                .privateKeyFromPath(weChatPayConfig.getPrivateKeyPath())
+                .merchantSerialNumber(weChatPayConfig.getMerchantSerialNumber())
+                .apiV3Key(weChatPayConfig.getApiV3Key())
+                .build();
     }
 }

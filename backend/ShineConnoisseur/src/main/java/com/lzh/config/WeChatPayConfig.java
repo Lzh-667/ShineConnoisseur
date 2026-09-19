@@ -9,6 +9,10 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "wechat.pay")
 public class WeChatPayConfig {
     /**
+     * 微信支付应用 ID
+     */
+    private String appId;
+    /**
      * 微信支付商户号
      */
     private String merchantId;

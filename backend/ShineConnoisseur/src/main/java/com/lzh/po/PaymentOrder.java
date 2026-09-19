@@ -22,6 +22,8 @@ public class PaymentOrder {
     private Long userId;
     /** VIP套餐ID */
     private Long productId;
+    /** 下单时的VIP套餐时长快照，单位：天 */
+    private Integer durationDays;
     /** 订单金额 */
     private BigDecimal amount;
     /** 支付方式：1支付宝，2微信 */

@@ -66,6 +66,8 @@ springdoc:
 alipay:
   # 支付宝沙箱应用 APPID
   app-id: ${ALIPAY_APP_ID}
+  # 支付宝商户 PID，用于校验回调收款方
+  seller-id: ${ALIPAY_SELLER_ID}
   # 应用私钥
   app-private-key: ${ALIPAY_APP_PRIVATE_KEY}
   # 支付宝公钥
@@ -85,6 +87,7 @@ alipay:
 
 wechat:
   pay:
+    app-id: ${WECHAT_APP_ID}
     merchant-id: ${WECHAT_MERCHANT_ID}
     private-key-path: ${WECHAT_PRIVATE_KEY_PATH}
     merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER}

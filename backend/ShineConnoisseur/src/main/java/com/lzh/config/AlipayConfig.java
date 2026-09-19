@@ -17,6 +17,10 @@ public class AlipayConfig {
      */
     private String appId;
     /**
+     * 支付宝商户 PID，用于校验异步通知的收款方
+     */
+    private String sellerId;
+    /**
      * 应用私钥
      */
     private String appPrivateKey;

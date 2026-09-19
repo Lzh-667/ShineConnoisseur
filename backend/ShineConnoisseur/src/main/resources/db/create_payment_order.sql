@@ -4,6 +4,7 @@ CREATE TABLE payment_order (
                                order_no VARCHAR(32) NOT NULL COMMENT '业务订单号',
                                user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
                                product_id BIGINT NOT NULL COMMENT 'VIP套餐ID',
+                               duration_days INT NOT NULL COMMENT '下单时的VIP套餐时长快照，单位：天',
                                amount DECIMAL(10,2) NOT NULL COMMENT '订单金额',
                                payment_method TINYINT NOT NULL COMMENT '支付方式：1支付宝，2微信',
                                status TINYINT NOT NULL DEFAULT 0 COMMENT '订单状态：0待支付，1支付成功，2已关闭，3已退款',
@@ -15,6 +16,7 @@ CREATE TABLE payment_order (
 
                                PRIMARY KEY (id),
                                UNIQUE KEY uk_order_no (order_no),
+                               UNIQUE KEY uk_payment_transaction (payment_method, transaction_id),
                                KEY idx_user_id (user_id),
                                KEY idx_product_id (product_id),
                                KEY idx_status_expire_time (status, expire_time),

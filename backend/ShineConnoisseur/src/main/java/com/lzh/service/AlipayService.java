@@ -7,5 +7,7 @@ import java.util.Map;
 public interface AlipayService {
     Result alipay(String orderNo);
 
-    String notify(Map<String, String> params);
+    boolean notify(Map<String, String> params);
+
+    boolean closeOrder(String orderNo);
 }

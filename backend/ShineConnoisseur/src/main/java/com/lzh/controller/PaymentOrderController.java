@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -39,7 +41,7 @@ public class PaymentOrderController {
     }
     @PostMapping("/alipay/notify")
     @Operation(summary = "支付宝异步通知notify")
-    public String alipayNotify(HttpServletRequest request) {
+    public ResponseEntity<String> alipayNotify(HttpServletRequest request) {
         Map<String, String> params = new HashMap<>();
         Map<String, String[]> requestParams = request.getParameterMap();
         for (Map.Entry<String, String[]> entry : requestParams.entrySet()) {
@@ -54,7 +56,13 @@ public class PaymentOrderController {
             }
             params.put(name, value);
         }
-        return alipayService.notify(params);
+        try {
+            boolean handled = alipayService.notify(params);
+            return ResponseEntity.ok(handled ? "success" : "failure");
+        } catch (RuntimeException e) {
+            log.error("支付宝回调处理失败，将通知支付宝重试", e);
+            return ResponseEntity.internalServerError().body("failure");
+        }
     }
     @PostMapping("/wechat")
     @Operation(summary = "微信支付")
@@ -63,19 +71,29 @@ public class PaymentOrderController {
     }
     @PostMapping("/wechat/notify")
     @Operation(summary = "微信异步通知notify")
-    public String wechatNotify(
+    public ResponseEntity<String> wechatNotify(
             @RequestBody String body,
             @RequestHeader("Wechatpay-Signature") String signature,
             @RequestHeader("Wechatpay-Timestamp") String timestamp,
             @RequestHeader("Wechatpay-Nonce") String nonce,
             @RequestHeader("Wechatpay-Serial") String serialNumber) {
-        return wechatPayService.notify(
-                body,
-                signature,
-                timestamp,
-                nonce,
-                serialNumber
-        );
+        try {
+            boolean handled = wechatPayService.notify(
+                    body,
+                    signature,
+                    timestamp,
+                    nonce,
+                    serialNumber
+            );
+            if (handled) {
+                return ResponseEntity.noContent().build();
+            }
+        } catch (RuntimeException e) {
+            log.error("微信回调处理失败，将通知微信重试", e);
+        }
+        return ResponseEntity.internalServerError()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"code\":\"FAIL\",\"message\":\"处理失败\"}");
     }
     @GetMapping("/show")
     @Operation(summary = "订单查询")
