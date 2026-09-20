@@ -5,6 +5,9 @@ import com.lzh.common.Result;
 import com.lzh.config.WeChatPayConfig;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
+import com.lzh.service.PaymentCloseResult;
+import com.lzh.service.PaymentOrderQueryResult;
+import com.lzh.service.PaymentRefundResult;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -20,6 +23,13 @@ import com.wechat.pay.java.service.payments.nativepay.model.Amount;
 import com.wechat.pay.java.service.payments.nativepay.model.CloseOrderRequest;
 import com.wechat.pay.java.service.payments.nativepay.model.PrepayRequest;
 import com.wechat.pay.java.service.payments.nativepay.model.PrepayResponse;
+import com.wechat.pay.java.service.payments.nativepay.model.QueryOrderByOutTradeNoRequest;
+import com.wechat.pay.java.service.refund.RefundService;
+import com.wechat.pay.java.service.refund.model.AmountReq;
+import com.wechat.pay.java.service.refund.model.CreateRequest;
+import com.wechat.pay.java.service.refund.model.Refund;
+import com.wechat.pay.java.service.refund.model.QueryByOutRefundNoRequest;
+import com.wechat.pay.java.service.refund.model.Status;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +50,8 @@ public class WechatPayServiceImpl implements WechatPayService {
     private WeChatPayConfig weChatPayConfig;
     @Resource
     private PaymentFulfillmentService paymentFulfillmentService;
+    @Resource
+    private PaymentOrderStateService paymentOrderStateService;
     @Override
     public Result wechat(String orderNo) {
         //1.查询订单
@@ -61,16 +73,26 @@ public class WechatPayServiceImpl implements WechatPayService {
                 SystemConstants.VIP_PAY_METHOD_WECHAT)) {
             return Result.fail("该订单不是微信支付订单");
         }
-        //4.校验订单状态
-        if (!Objects.equals(
-                paymentOrder.getStatus(),
-                SystemConstants.ORDER_STATUS_PAYING)) {
-            return Result.fail("订单状态异常");
-        }
-        //5.校验订单是否过期
+        //4.校验订单是否过期
         if (paymentOrder.getExpireTime().isBefore(LocalDateTime.now())) {
             return Result.fail("订单已过期");
         }
+
+        //5.复用已生成的二维码；只有一个请求能抢占到发起中状态
+        Result existingResult = existingPaymentResult(paymentOrder);
+        if (existingResult != null) {
+            return existingResult;
+        }
+        if (!paymentOrderStateService.transition(
+                paymentOrder.getId(),
+                SystemConstants.ORDER_STATUS_PAYING,
+                SystemConstants.ORDER_STATUS_INITIATING
+        )) {
+            PaymentOrder latest = paymentOrderMapper.selectById(paymentOrder.getId());
+            Result latestResult = existingPaymentResult(latest);
+            return latestResult != null ? latestResult : Result.fail("订单状态已变化，请刷新后重试");
+        }
+
         try {
             // 6. 创建微信支付配置
             Config config = new RSAAutoCertificateConfig.Builder()
@@ -107,11 +129,23 @@ public class WechatPayServiceImpl implements WechatPayService {
             request.setAmount(amount);
             //10.调用微信
             PrepayResponse response = service.prepay(request);
-            //11.返回二维码链接
+            //11.缓存二维码并迁移到待支付状态
+            if (!paymentOrderStateService.completeInitiation(
+                    paymentOrder.getId(),
+                    response.getCodeUrl()
+            )) {
+                PaymentOrder latest = paymentOrderMapper.selectById(paymentOrder.getId());
+                if (latest != null
+                        && Objects.equals(latest.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)) {
+                    return Result.ok(response.getCodeUrl());
+                }
+                return Result.fail("订单正在关闭，请勿继续支付");
+            }
             return Result.ok(response.getCodeUrl());
         } catch (Exception e) {
             log.error("微信支付下单失败，orderNo={}", orderNo, e);
-            return Result.fail("微信支付下单失败");
+            // 网络异常时渠道侧结果未知，保留发起中状态，避免取消线程先关闭本地再被迟到请求创建渠道订单。
+            return Result.fail("微信支付下单结果待确认，请稍后查询订单");
         }
     }
 
@@ -206,7 +240,7 @@ public class WechatPayServiceImpl implements WechatPayService {
     }
 
     @Override
-    public boolean closeOrder(String orderNo) {
+    public PaymentCloseResult closeOrder(String orderNo) {
         CloseOrderRequest request = new CloseOrderRequest();
         request.setMchid(weChatPayConfig.getMerchantId());
         request.setOutTradeNo(orderNo);
@@ -215,12 +249,12 @@ public class WechatPayServiceImpl implements WechatPayService {
                     .config(createConfig())
                     .build();
             service.closeOrder(request);
-            return true;
+            return PaymentCloseResult.CLOSED;
         } catch (ServiceException e) {
             // 未调用过预下单时，微信侧没有订单，本地可以安全关闭。
             if ("ORDER_NOT_EXISTS".equals(e.getErrorCode())
                     || "ORDER_NOT_EXIST".equals(e.getErrorCode())) {
-                return true;
+                return PaymentCloseResult.NOT_FOUND;
             }
             log.warn(
                     "微信支付关单失败，orderNo={}, code={}, message={}",
@@ -228,10 +262,118 @@ public class WechatPayServiceImpl implements WechatPayService {
                     e.getErrorCode(),
                     e.getErrorMessage()
             );
-            return false;
+            return PaymentCloseResult.FAILED;
         } catch (Exception e) {
             log.error("微信支付关单异常，orderNo={}", orderNo, e);
-            return false;
+            return PaymentCloseResult.FAILED;
+        }
+    }
+
+    @Override
+    public PaymentOrderQueryResult queryOrder(String orderNo) {
+        QueryOrderByOutTradeNoRequest request = new QueryOrderByOutTradeNoRequest();
+        request.setMchid(weChatPayConfig.getMerchantId());
+        request.setOutTradeNo(orderNo);
+        try {
+            Transaction transaction = new NativePayService.Builder()
+                    .config(createConfig())
+                    .build()
+                    .queryOrderByOutTradeNo(request);
+            if (!Objects.equals(transaction.getAppid(), weChatPayConfig.getAppId())
+                    || !Objects.equals(transaction.getMchid(), weChatPayConfig.getMerchantId())
+                    || !Objects.equals(transaction.getOutTradeNo(), orderNo)) {
+                log.error("微信查单返回的商户信息不匹配，orderNo={}", orderNo);
+                return PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.UNKNOWN);
+            }
+            return switch (transaction.getTradeState()) {
+                case SUCCESS -> {
+                    if (transaction.getAmount() == null
+                            || transaction.getAmount().getTotal() == null
+                            || !"CNY".equals(transaction.getAmount().getCurrency())) {
+                        log.error("微信查单金额或币种异常，orderNo={}", orderNo);
+                        yield PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.UNKNOWN);
+                    }
+                    yield PaymentOrderQueryResult.paid(
+                            transaction.getTransactionId(),
+                            BigDecimal.valueOf(transaction.getAmount().getTotal(), 2));
+                }
+                case NOTPAY, USERPAYING, ACCEPT ->
+                        PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.UNPAID);
+                case REFUND -> PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.REFUNDED);
+                case CLOSED, REVOKED, PAYERROR ->
+                        PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.CLOSED);
+            };
+        } catch (ServiceException e) {
+            if ("ORDER_NOT_EXISTS".equals(e.getErrorCode())
+                    || "ORDER_NOT_EXIST".equals(e.getErrorCode())) {
+                return PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.NOT_FOUND);
+            }
+            log.warn("微信查单失败，orderNo={}, code={}, message={}",
+                    orderNo, e.getErrorCode(), e.getErrorMessage());
+            return PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.UNKNOWN);
+        } catch (Exception e) {
+            log.error("微信查单异常，orderNo={}", orderNo, e);
+            return PaymentOrderQueryResult.of(PaymentOrderQueryResult.State.UNKNOWN);
+        }
+    }
+
+    @Override
+    public PaymentRefundResult refundOrder(String orderNo, BigDecimal amount, String refundRequestNo) {
+        CreateRequest request = new CreateRequest();
+        request.setOutTradeNo(orderNo);
+        request.setOutRefundNo(refundRequestNo);
+        request.setReason("支付成功但权益发放失败，自动退款");
+        long cents = amount.movePointRight(2).longValueExact();
+        AmountReq refundAmount = new AmountReq();
+        refundAmount.setRefund(cents);
+        refundAmount.setTotal(cents);
+        refundAmount.setCurrency("CNY");
+        request.setAmount(refundAmount);
+        try {
+            Refund refund = new RefundService.Builder()
+                    .config(createConfig())
+                    .build()
+                    .create(request);
+            if (refund.getStatus() == Status.SUCCESS) {
+                return PaymentRefundResult.SUCCESS;
+            }
+            if (refund.getStatus() == Status.PROCESSING) {
+                return PaymentRefundResult.PROCESSING;
+            }
+            log.warn("微信退款未成功，orderNo={}, refundStatus={}", orderNo, refund.getStatus());
+            return PaymentRefundResult.FAILED;
+        } catch (Exception e) {
+            log.error("微信退款异常，orderNo={}", orderNo, e);
+            return PaymentRefundResult.FAILED;
+        }
+    }
+
+    @Override
+    public PaymentRefundResult queryRefund(String refundRequestNo) {
+        QueryByOutRefundNoRequest request = new QueryByOutRefundNoRequest();
+        request.setOutRefundNo(refundRequestNo);
+        try {
+            Refund refund = new RefundService.Builder()
+                    .config(createConfig())
+                    .build()
+                    .queryByOutRefundNo(request);
+            if (refund.getStatus() == Status.SUCCESS) {
+                return PaymentRefundResult.SUCCESS;
+            }
+            if (refund.getStatus() == Status.PROCESSING) {
+                return PaymentRefundResult.PROCESSING;
+            }
+            return PaymentRefundResult.FAILED;
+        } catch (ServiceException e) {
+            if ("RESOURCE_NOT_EXISTS".equals(e.getErrorCode())) {
+                return PaymentRefundResult.FAILED;
+            }
+            log.warn("微信退款查询失败，refundRequestNo={}, code={}, message={}",
+                    refundRequestNo, e.getErrorCode(), e.getErrorMessage());
+            return PaymentRefundResult.PROCESSING;
+        } catch (Exception e) {
+            log.error("微信退款查询异常，refundRequestNo={}", refundRequestNo, e);
+            return PaymentRefundResult.PROCESSING;
         }
     }
 
@@ -242,5 +384,30 @@ public class WechatPayServiceImpl implements WechatPayService {
                 .merchantSerialNumber(weChatPayConfig.getMerchantSerialNumber())
                 .apiV3Key(weChatPayConfig.getApiV3Key())
                 .build();
+    }
+
+    private Result existingPaymentResult(PaymentOrder order) {
+        if (order == null) {
+            return Result.fail("订单不存在");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_WAIT_PAY)) {
+            return order.getPaymentPayload() != null && !order.getPaymentPayload().isBlank()
+                    ? Result.ok(order.getPaymentPayload())
+                    : Result.fail("历史订单缺少支付信息，请取消后重新下单");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_INITIATING)) {
+            return Result.fail("支付信息正在生成，请稍后重试");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_CLOSING)) {
+            return Result.fail("订单正在取消，请勿继续支付");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)) {
+            return Result.fail("订单已支付");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_CLOSE)
+                || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUND)) {
+            return Result.fail("订单已关闭");
+        }
+        return null;
     }
 }

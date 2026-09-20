@@ -31,8 +31,9 @@ public class PaymentOrderController {
     @PostMapping("/orders")
     @Operation(summary = "创建支付订单")
     public Result createOrder(@RequestParam Long productId,
-                              @RequestParam Integer paymentMethod){
-        return paymentOrderService.createOrder(productId,paymentMethod);
+                              @RequestParam Integer paymentMethod,
+                              @RequestHeader("Idempotency-Key") String requestId){
+        return paymentOrderService.createOrder(productId, paymentMethod, requestId);
     }
     @PostMapping("/alipay")
     @Operation(summary = "支付宝支付")

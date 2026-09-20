@@ -18,6 +18,8 @@ public class PaymentOrder {
     private Long id;
     /** 业务订单号 */
     private String orderNo;
+    /** 客户端创建订单幂等键 */
+    private String requestId;
     /** 用户ID */
     private Long userId;
     /** VIP套餐ID */
@@ -28,10 +30,12 @@ public class PaymentOrder {
     private BigDecimal amount;
     /** 支付方式：1支付宝，2微信 */
     private Integer paymentMethod;
-    /** 订单状态：0待支付，1支付成功，2已关闭，3已退款 */
+    /** 订单状态：0待发起，1支付成功，2已关闭，3已退款，4发起中，5待支付，6关单中，7退款中 */
     private Integer status;
     /** 第三方支付交易号 */
     private String transactionId;
+    /** 支付页面HTML或二维码URL，用于支付发起接口幂等返回 */
+    private String paymentPayload;
     /** 订单支付截止时间 */
     private LocalDateTime expireTime;
     /** 支付成功时间 */

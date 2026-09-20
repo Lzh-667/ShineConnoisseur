@@ -41,6 +41,7 @@ public class PaymentFulfillmentService {
         PaymentOrder order = paymentOrderMapper.selectOne(
                 new LambdaQueryWrapper<PaymentOrder>()
                         .eq(PaymentOrder::getOrderNo, orderNo)
+                        .last("FOR UPDATE")
         );
         if (order == null) {
             throw new BusinessException("支付订单不存在");
@@ -59,6 +60,9 @@ public class PaymentFulfillmentService {
         }
         if (!List.of(
                 SystemConstants.ORDER_STATUS_PAYING,
+                SystemConstants.ORDER_STATUS_INITIATING,
+                SystemConstants.ORDER_STATUS_WAIT_PAY,
+                SystemConstants.ORDER_STATUS_CLOSING,
                 SystemConstants.ORDER_STATUS_CLOSE
         ).contains(order.getStatus())) {
             throw new BusinessException("支付订单状态不允许履约");
@@ -76,14 +80,16 @@ public class PaymentFulfillmentService {
                         .eq(PaymentOrder::getId, order.getId())
                         .in(PaymentOrder::getStatus,
                                 SystemConstants.ORDER_STATUS_PAYING,
+                                SystemConstants.ORDER_STATUS_INITIATING,
+                                SystemConstants.ORDER_STATUS_WAIT_PAY,
+                                SystemConstants.ORDER_STATUS_CLOSING,
                                 SystemConstants.ORDER_STATUS_CLOSE)
                         .set(PaymentOrder::getStatus, SystemConstants.ORDER_STATUS_SUCCESS)
                         .set(PaymentOrder::getTransactionId, transactionId)
                         .set(PaymentOrder::getPayTime, now)
         );
         if (changed != 1) {
-            // 另一条并发回调已抢先处理时回滚并让支付平台稍后重试。
-            throw new BusinessException("支付订单正在被并发处理");
+            throw new BusinessException("支付订单状态已变化");
         }
 
         int granted = userVipMapper.grantOrExtend(order.getUserId(), durationDays, now);

@@ -10,6 +10,7 @@ public class PaymentOrderVO {
 
     private Long id;
     private String orderNo;
+    private String requestId;
     private Long userId;
     private Long productId;
     private Integer durationDays;
