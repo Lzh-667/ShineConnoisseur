@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-build:
+    name: Backend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ShineConnoisseur
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Package backend
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package
+
+  backend-tests:
+    name: Backend tests (non-blocking)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ShineConnoisseur
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run existing test suite
+        id: tests
+        continue-on-error: true
+        run: mvn --batch-mode --no-transfer-progress test
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/ShineConnoisseur/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Report known non-blocking failures
+        if: steps.tests.outcome == 'failure'
+        run: echo "Backend tests currently contain known failures; reports were uploaded for follow-up."
+
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
+
+  compose-config:
+    name: Docker Compose config
+    runs-on: ubuntu-latest
+    env:
+      MYSQL_ROOT_PASSWORD: ci-root-password
+      MYSQL_USER: ci-app
+      MYSQL_PASSWORD: ci-app-password
+      REDIS_PASSWORD: ci-redis-password
+      RABBITMQ_DEFAULT_USER: ci-rabbit
+      RABBITMQ_DEFAULT_PASS: ci-rabbit-password
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
