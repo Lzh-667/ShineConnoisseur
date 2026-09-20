@@ -1,8 +1,6 @@
 package com.lzh.po;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +17,6 @@ public class UserVip {
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
-
     /**
      * 用户ID
      */
@@ -35,9 +32,11 @@ public class UserVip {
     /**
      * 创建时间
      */
+    @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     /**
      * 更新时间
      */
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 }

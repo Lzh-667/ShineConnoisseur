@@ -32,4 +32,23 @@ public class SystemConstants {
 
     public static final Integer MOVIE_STATUS_NORMAL = 1;
     public static final Integer MOVIE_STATUS_BAN = 0;
+
+    public static final Integer VIPPRODUCT_STATUS_NORMAL = 1;
+    public static final Integer VIP_PAY_METHOD_ALIBABA = 1;
+    public static final Integer VIP_PAY_METHOD_WECHAT = 2;
+
+    public static final long ORDER_EXPIRE_TIME = 30;
+    public static final Integer ORDER_STATUS_PAYING = 0;
+    public static final Integer ORDER_STATUS_SUCCESS = 1;
+    public static final Integer ORDER_STATUS_CLOSE = 2;
+    public static final Integer ORDER_STATUS_REFUND = 3;
+    /** 正在向支付渠道创建支付单 */
+    public static final Integer ORDER_STATUS_INITIATING = 4;
+    /** 支付渠道订单已创建，等待用户支付 */
+    public static final Integer ORDER_STATUS_WAIT_PAY = 5;
+    /** 正在向支付渠道关单 */
+    public static final Integer ORDER_STATUS_CLOSING = 6;
+    /** 已扣款但本地无法履约，正在进行幂等退款补偿 */
+    public static final Integer ORDER_STATUS_REFUNDING = 7;
+
 }

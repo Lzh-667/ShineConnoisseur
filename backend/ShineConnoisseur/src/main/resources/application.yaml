@@ -61,3 +61,35 @@ springdoc:
     operations-sorter: method
   api-docs:
     path: /v3/api-docs
+
+
+alipay:
+  # 支付宝沙箱应用 APPID
+  app-id: ${ALIPAY_APP_ID}
+  # 支付宝商户 PID，用于校验回调收款方
+  seller-id: ${ALIPAY_SELLER_ID}
+  # 应用私钥
+  app-private-key: ${ALIPAY_APP_PRIVATE_KEY}
+  # 支付宝公钥
+  alipay-public-key: ${ALIPAY_PUBLIC_KEY}
+  # 支付宝沙箱网关
+  gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+  # RSA2
+  sign-type: RSA2
+  # 编码
+  charset: UTF-8
+  # 数据格式
+  format: json
+  # 支付宝异步通知地址
+  notify-url: ${ALIPAY_NOTIFY_URL}
+  # 支付成功后同步跳转地址
+  return-url: ${ALIPAY_RETURN_URL}
+
+wechat:
+  pay:
+    app-id: ${WECHAT_APP_ID}
+    merchant-id: ${WECHAT_MERCHANT_ID}
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH}
+    merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER}
+    api-v3-key: ${WECHAT_API_V3_KEY}
+    notify-url: ${WECHAT_NOTIFY_URL}

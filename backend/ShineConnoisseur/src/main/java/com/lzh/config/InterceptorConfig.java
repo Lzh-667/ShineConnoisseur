@@ -30,6 +30,8 @@ public class InterceptorConfig implements WebMvcConfigurer {
                         "/users/registerCode",
                         "/users/resetCode",
                         "/users/resetPassword",
+                        "/payments/alipay/notify",
+                        "/payments/wechat/notify",
                         "/admins/**",
                         "/uploads/**",
                         "/docs/**",
