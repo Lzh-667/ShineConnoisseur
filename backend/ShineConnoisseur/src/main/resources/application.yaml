@@ -8,15 +8,15 @@ spring:
     name: shineconnoisseur
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:192.168.100.129}:${MYSQL_PORT:3306}/shineconnoisseur?useUnicode=true&characterEncoding=utf8&autoReconnect=true
-    username: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:123456}
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:shineconnoisseur}?useUnicode=true&characterEncoding=utf8&autoReconnect=true
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
   rabbitmq:
-    host: ${RABBITMQ_HOST:192.168.100.129}
+    host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     virtual-host: ${RABBITMQ_VHOST:/shine}
-    username: ${RABBITMQ_USER:lzh}
-    password: ${RABBITMQ_PASSWORD:123}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASSWORD}
     connection-timeout: 1s
     template:
       retry:
@@ -29,9 +29,9 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:192.168.100.129}
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:123456}
+      password: ${REDIS_PASSWORD}
       lettuce:
         pool:
           max-active: 20
@@ -40,7 +40,7 @@ spring:
           time-between-eviction-runs: 10s
 
   elasticsearch:
-    uris: http://${ES_HOST:192.168.100.129}:${ES_PORT:9200}
+    uris: http://${ES_HOST:localhost}:${ES_PORT:9200}
   servlet:
     multipart:
       max-file-size: 5MB
@@ -65,13 +65,13 @@ springdoc:
 
 alipay:
   # 支付宝沙箱应用 APPID
-  app-id: ${ALIPAY_APP_ID}
+  app-id: ${ALIPAY_APP_ID:}
   # 支付宝商户 PID，用于校验回调收款方
-  seller-id: ${ALIPAY_SELLER_ID}
+  seller-id: ${ALIPAY_SELLER_ID:}
   # 应用私钥
-  app-private-key: ${ALIPAY_APP_PRIVATE_KEY}
+  app-private-key: ${ALIPAY_APP_PRIVATE_KEY:}
   # 支付宝公钥
-  alipay-public-key: ${ALIPAY_PUBLIC_KEY}
+  alipay-public-key: ${ALIPAY_PUBLIC_KEY:}
   # 支付宝沙箱网关
   gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
   # RSA2
@@ -81,15 +81,15 @@ alipay:
   # 数据格式
   format: json
   # 支付宝异步通知地址
-  notify-url: ${ALIPAY_NOTIFY_URL}
+  notify-url: ${ALIPAY_NOTIFY_URL:}
   # 支付成功后同步跳转地址
-  return-url: ${ALIPAY_RETURN_URL}
+  return-url: ${ALIPAY_RETURN_URL:}
 
 wechat:
   pay:
-    app-id: ${WECHAT_APP_ID}
-    merchant-id: ${WECHAT_MERCHANT_ID}
-    private-key-path: ${WECHAT_PRIVATE_KEY_PATH}
-    merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER}
-    api-v3-key: ${WECHAT_API_V3_KEY}
-    notify-url: ${WECHAT_NOTIFY_URL}
+    app-id: ${WECHAT_APP_ID:}
+    merchant-id: ${WECHAT_MERCHANT_ID:}
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:}
+    merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER:}
+    api-v3-key: ${WECHAT_API_V3_KEY:}
+    notify-url: ${WECHAT_NOTIFY_URL:}

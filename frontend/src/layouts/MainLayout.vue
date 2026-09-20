@@ -15,6 +15,7 @@ const navItems = [
   { path: '/', label: '首页' },
   { path: '/movies', label: '电影' },
   { path: '/reviews/search', label: '影评' },
+  { path: '/vip', label: 'VIP' },
 ]
 
 function isActive(path) {

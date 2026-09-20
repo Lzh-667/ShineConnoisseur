@@ -184,7 +184,32 @@
 
 ---
 
-## 9. LikeVO（统一点赞返回）
+## 9. VIP 会员模块 — `/vips`
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/vips/products` | 查询已上架 VIP 套餐 | 需 |
+| GET | `/vips/me` | 查询当前用户会员状态及到期时间 | 需 |
+
+---
+
+## 10. 支付模块 — `/payments`
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/payments/orders` | 创建订单，参数 `productId`、`paymentMethod`，请求头 `Idempotency-Key` | 需 |
+| POST | `/payments/alipay` | 获取支付宝支付页面，参数 `orderNo` | 需 |
+| POST | `/payments/wechat` | 获取微信 Native 支付二维码地址，参数 `orderNo` | 需 |
+| GET | `/payments/show` | 查询本人订单，参数 `orderNo` | 需 |
+| DELETE | `/payments/delete` | 取消本人订单，参数 `orderNo` | 需 |
+| POST | `/payments/alipay/notify` | 支付宝异步通知 | 渠道验签 |
+| POST | `/payments/wechat/notify` | 微信支付异步通知 | 渠道验签 |
+
+`paymentMethod`：1=支付宝，2=微信。订单状态：0=待发起，1=支付成功，2=已关闭，3=已退款，4=发起中，5=待支付，6=关单中，7=退款中。
+
+---
+
+## 11. LikeVO（统一点赞返回）
 
 `{ like: Boolean, likeCount: Integer }` — 点赞/取消点赞接口统一返回，`like` 为操作后状态。
 
@@ -201,5 +226,7 @@
 | 关注 | 4 | 全部需登录 |
 | 消息 | 4 | 全部需登录 |
 | 上传 | 1 | 需登录 |
+| VIP会员 | 2 | 全部需登录 |
+| 支付 | 7 | 5 个用户接口 + 2 个渠道验签回调 |
 | 管理员 | 15 | login 免登 |
-| **合计** | **59** | |
+| **合计** | **68** | |

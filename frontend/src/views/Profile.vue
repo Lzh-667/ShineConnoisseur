@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { getCurrentUser } from '../api'
-import { EditPen, Lock, Star, Document, ChatDotSquare, User, Avatar } from '@element-plus/icons-vue'
+import { EditPen, Lock, Star, Document, ChatDotSquare, User, Avatar, Medal } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -20,6 +20,7 @@ async function load() {
 }
 
 const menuItems = [
+  { label: 'VIP 会员中心', path: '/vip', icon: Medal },
   { label: '编辑资料', path: '/profile/edit', icon: EditPen },
   { label: '修改密码', path: '/profile/password', icon: Lock },
   { label: '我的收藏', path: '/profile/favorites', icon: Star },

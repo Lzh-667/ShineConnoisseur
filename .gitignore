@@ -1,5 +1,9 @@
 # 环境变量（含密码，禁止提交）
 .env
+secrets/
+*.pem
+*.p12
+*.pfx
 
 # Java / Maven
 **/target/

@@ -236,6 +236,48 @@ export function getFavoriteMovies(current = 1) {
   return request({ url: '/movies/favorite', method: 'get', params: { current } })
 }
 
+// ========== VIP 与支付 ==========
+
+/** 查询在售 VIP 套餐 */
+export function getVipProducts() {
+  return request({ url: '/vips/products', method: 'get' })
+}
+
+/** 查询当前用户的 VIP 状态 */
+export function getMyVip() {
+  return request({ url: '/vips/me', method: 'get' })
+}
+
+/** 创建支付订单；同一个 key 重试时由后端返回同一订单 */
+export function createPaymentOrder(productId, paymentMethod, idempotencyKey) {
+  return request({
+    url: '/payments/orders',
+    method: 'post',
+    params: { productId, paymentMethod },
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+}
+
+/** 获取支付宝电脑网站支付表单 */
+export function startAlipay(orderNo) {
+  return request({ url: '/payments/alipay', method: 'post', params: { orderNo } })
+}
+
+/** 获取微信 Native 支付二维码内容 */
+export function startWechatPay(orderNo) {
+  return request({ url: '/payments/wechat', method: 'post', params: { orderNo } })
+}
+
+/** 查询支付订单 */
+export function getPaymentOrder(orderNo) {
+  return request({ url: '/payments/show', method: 'get', params: { orderNo } })
+}
+
+/** 取消未支付订单 */
+export function cancelPaymentOrder(orderNo) {
+  return request({ url: '/payments/delete', method: 'delete', params: { orderNo } })
+}
+
 // ========== 文件上传 ==========
 
 /** 上传头像 */

@@ -13,6 +13,7 @@ const routes = [
       { path: 'reviews/:id', name: 'ReviewDetail', component: () => import('../views/ReviewDetail.vue') },
       { path: 'users/:id', name: 'UserProfile', component: () => import('../views/UserProfile.vue') },
       { path: 'messages', name: 'Messages', component: () => import('../views/Messages.vue'), meta: { requiresAuth: true } },
+      { path: 'vip', name: 'VipCenter', component: () => import('../views/VipCenter.vue'), meta: { requiresAuth: true } },
       { path: 'profile', name: 'Profile', component: () => import('../views/Profile.vue'), meta: { requiresAuth: true } },
       { path: 'profile/edit', name: 'ProfileEdit', component: () => import('../views/ProfileEdit.vue'), meta: { requiresAuth: true } },
       { path: 'profile/reviews', name: 'MyReviews', component: () => import('../views/MyReviews.vue'), meta: { requiresAuth: true } },

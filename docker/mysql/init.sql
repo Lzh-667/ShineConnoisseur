@@ -45,6 +45,18 @@ CREATE TABLE IF NOT EXISTS `message` (
   KEY `idx_user_status` (`user_id`,`status`)
 ) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='消息通知表';
 INSERT INTO `message` VALUES (1,1,31,0,0,31,'用户lzh5039关注了你',1,'2026-07-20 20:16:25','2026-07-20 20:18:55'),(2,1,31,1,1,22,'用户lzh5039点赞了你的影评',1,'2026-07-20 20:20:42','2026-07-20 20:22:24'),(3,1,31,1,1,22,'用户lzh5039点赞了你的影评',1,'2026-07-20 20:21:09','2026-07-20 20:22:24'),(4,1,31,3,2,1,'用户lzh5039点赞了你的评论',1,'2026-07-20 20:23:33','2026-07-20 20:24:10'),(5,1,31,3,2,1,'用户lzh5039点赞了你的评论',1,'2026-07-20 20:24:41','2026-07-20 20:32:46'),(11,1,31,4,2,39,'用户lzh5039回复了你的评论',1,'2026-07-20 21:18:24','2026-07-20 21:20:58'),(12,1,31,2,2,40,'用户lzh5039评论了你的影评',1,'2026-07-20 21:20:27','2026-07-20 21:20:58'),(14,31,1,0,0,1,'用户烂片避雷针95关注了你',1,'2026-07-20 23:32:04','2026-07-25 20:07:05'),(17,31,1,3,2,40,'用户烂片避雷针95点赞了你的评论',1,'2026-07-20 23:56:04','2026-07-25 20:07:05'),(18,31,1,3,2,36,'用户烂片避雷针95点赞了你的评论',1,'2026-07-20 23:56:05','2026-07-25 20:07:05'),(21,6,1,3,2,31,'用户烂片避雷针95点赞了你的评论',0,'2026-07-21 01:02:14','2026-07-21 01:02:14'),(23,1,31,3,2,1,'用户lzh5039点赞了你的评论',1,'2026-07-25 21:26:56','2026-07-25 21:55:21'),(25,31,1,0,0,1,'用户烂片避雷针95关注了你',1,'2026-07-27 13:02:37','2026-07-27 13:20:42'),(26,31,1,0,0,1,'用户烂片避雷针95关注了你',1,'2026-07-27 13:13:54','2026-07-27 13:20:42'),(27,31,1,0,0,1,'用户烂片避雷针95关注了你',1,'2026-07-27 13:28:10','2026-07-27 14:20:14'),(28,31,1,0,0,1,'用户烂片避雷针95关注了你',1,'2026-07-27 13:30:22','2026-07-27 14:20:14'),(29,31,1,1,1,36,'用户烂片避雷针95点赞了你的影评',1,'2026-07-27 13:45:48','2026-07-27 14:20:14'),(30,31,1,1,1,36,'用户烂片避雷针95点赞了你的影评',1,'2026-07-27 17:24:20','2026-07-27 17:24:31'),(34,8,1,4,2,59,'用户烂片避雷针95回复了你的评论',0,'2026-07-27 21:20:59','2026-07-27 21:20:59'),(35,10,1,4,2,61,'用户烂片避雷针95回复了你的评论',0,'2026-07-27 21:29:57','2026-07-27 21:29:57'),(36,6,1,4,2,62,'用户烂片避雷针95回复了你的评论',0,'2026-07-27 21:32:59','2026-07-27 21:32:59'),(37,8,1,3,2,30,'用户烂片避雷针95点赞了你的评论',0,'2026-07-27 21:34:59','2026-07-27 21:34:59'),(38,1,31,1,1,39,'用户lzh5039点赞了你的影评',1,'2026-07-28 20:58:25','2026-07-28 20:58:51'),(39,31,1,1,1,40,'用户烂片避雷针95点赞了你的影评',0,'2026-07-28 20:58:31','2026-07-28 20:58:31');
+DELETE newer
+FROM `message` newer
+JOIN `message` older
+  ON newer.`user_id` = older.`user_id`
+ AND newer.`from_user_id` = older.`from_user_id`
+ AND newer.`type` = older.`type`
+ AND newer.`target_type` = older.`target_type`
+ AND newer.`target_id` = older.`target_id`
+ AND newer.`id` > older.`id`;
+ALTER TABLE `message`
+  ADD UNIQUE KEY `uk_biz_key` (`user_id`,`from_user_id`,`type`,`target_type`,`target_id`);
+
 CREATE TABLE IF NOT EXISTS `movie` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '电影ID',
   `title` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '电影名称',
@@ -95,7 +107,7 @@ CREATE TABLE IF NOT EXISTS `review` (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_user_movie` (`user_id`,`movie_id`),
+  UNIQUE KEY `uk_user_movie` (`user_id`,`movie_id`,`status`),
   KEY `idx_movie_id` (`movie_id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_status_create_time` (`status`,`create_time`)
@@ -143,6 +155,61 @@ CREATE TABLE IF NOT EXISTS `user` (
   KEY `idx_status_create_time` (`status`,`create_time`)
 ) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 INSERT INTO `user` VALUES (1,'lcw','$2a$10$.ywJE84FPgz4Yl8VmzPHLO32UERAvbKFWVwrDUtVw7YM4kPV9lYve','user001_5506@example.com','13543676251','烂片避雷针95','/uploads/images/avatar/ae1dcf00734c4e64b0146eed921eda94.png',2,'我命由我不由天!',1,3,1,1,'2024-03-08 01:09:25','2026-07-29 18:23:30',NULL),(2,'user002_魏敏妍','$2a$10$bctg7hpoi9Ej8gNwZBMI8O2iSS9WsMEVqlV8VTgA77Jwqz64lNnO.','user002_4611@example.com','17732719211','最后一排观众1','https://api.dicebear.com/7.x/avataaars/svg?seed=3',2,NULL,1,0,0,0,'2023-08-09 12:15:18','2026-06-19 17:01:56',NULL),(3,'user003_蒋子嘉','$2a$10$LT4rVX5TPZbPJkUCPG/jp.pDtzuQmTnImDCrmjEXsGBZPQZ1Rngue','user003_1711@example.com','19593303705','纪录片猎人16','https://api.dicebear.com/7.x/bottts/svg?seed=2',0,NULL,1,0,0,0,'2025-06-01 13:10:00','2026-06-14 21:57:44','2025-06-23 13:10:00'),(4,'user004_吴宇勇','$2a$10$V6y9RlYdcoG6bo7G9.BzUOr//JFKRvF58yILF8CGoqQTo0/lz3k5C','user004_4814@example.com','13508157429','最后一排观众59','https://api.dicebear.com/7.x/bottts/svg?seed=1',0,NULL,1,0,0,0,'2023-10-01 23:35:39','2026-06-19 16:52:43','2023-10-13 23:35:39'),(5,'user005_雷欣','$2a$10$1DEqP.yXza60EmitAF6AbuIGvXpJNNV/aCeBx6tYUD4Jopa8Uld1S','user005_7216@example.com','15787194506','动画片大龄儿童29','https://api.dicebear.com/7.x/bottts/svg?seed=1',2,NULL,1,0,0,0,'2024-02-15 09:44:53','2026-06-21 17:52:21','2024-04-17 09:44:53'),(6,'user006_滕辰','$2a$10$5D6N5jzXGxeeRyDgCPHRv.G7p7Gva.1XIdpbe/0Dwwm6o/8aF7Y/O','user006_9179@example.com','17790256940','文艺片爱好者19','https://api.dicebear.com/7.x/avataaars/svg?seed=5',0,NULL,1,0,0,0,'2023-09-27 21:17:02','2026-06-19 16:52:43','2023-11-04 21:17:02'),(7,'user007_彭婷秀','$2a$10$ytin.OsJkuboDE1/xuhbtu3hL//JWJeVDyjdkCxmRH9/tDz2VB53G','user007_9348@example.com','17197613238','电影狂魔15','https://api.dicebear.com/7.x/avataaars/svg?seed=3',2,NULL,1,0,0,0,'2024-09-02 02:18:46','2026-06-14 21:57:44','2024-10-13 02:18:46'),(8,'user008_薛怡芳','$2a$10$HTZKTWF4Yc44F/sMjy7CKuEoFdHtg5gXC9KtJye4VsLzIsRaabQUK','user008_2876@example.com','19676567501','最后一排观众99','https://api.dicebear.com/7.x/bottts/svg?seed=1',0,NULL,1,0,0,0,'2023-01-04 09:35:22','2026-06-14 21:57:44','2023-02-21 09:35:22'),(9,'user009_沈泽文','$2a$10$RNo8POEEWwxn1Nw2LlMo4ObvN3RoaPhRWofTzSq8qpcrQlEzu9PHW','user009_3504@example.com','15918739736','导演梦70','https://api.dicebear.com/7.x/identicon/svg?seed=2',0,NULL,1,0,0,0,'2023-04-25 13:12:56','2026-06-19 16:52:43','2023-07-13 13:12:56'),(10,'user010_章浩','$2a$10$whPRMZbGRt7r8WtQNaI/bed9bJD2MlVpqrCIDiC3urwEun5Q6duPO','user010_2290@example.com','13885879795','喜剧片收割机9','https://api.dicebear.com/7.x/identicon/svg?seed=2',2,NULL,1,0,0,0,'2024-07-16 06:00:43','2026-06-14 21:57:44','2024-08-31 06:00:43'),(11,'user011_花玲文','$2a$10$.6k/yEyfcMZVxCTcmTbZGODGbSP8Iv2krjW8b/ku3gmT.qw/J8xmy','user011_6107@example.com','17821218382','诺兰粉头57','https://api.dicebear.com/7.x/identicon/svg?seed=2',1,NULL,1,0,0,0,'2023-12-13 00:45:57','2026-06-14 21:57:44','2024-02-06 00:45:57'),(12,'user012_金伟','$2a$10$g6xUVOE.iVoAU1z3klZkgOgEDBflTeWX2.hioSfYxeRaJ2GEZQ3nO','user012_1964@example.com','14172370545','豆瓣难民43','https://api.dicebear.com/7.x/avataaars/svg?seed=2',1,NULL,1,0,0,0,'2023-08-08 19:37:58','2026-06-19 16:52:43','2023-10-07 19:37:58'),(13,'user013_殷阳','$2a$10$t3pKlf3uFp7AE7g.yG5KzekkXmZ4roM80UPtclJo70gbVdxPfrBDe','user013_8749@example.com','17304451095','胶片收藏家13','https://api.dicebear.com/7.x/bottts/svg?seed=2',1,NULL,1,0,0,0,'2023-02-25 23:47:29','2026-06-14 21:57:44',NULL),(14,'user014_马梓娟','$2a$10$yM09k4QYBAb7pAfLww1rmOhWd5Vj620MFyBTHweogWdbqNC.uwst2','user014_5073@example.com','14304235259','纪录片猎人58','https://api.dicebear.com/7.x/avataaars/svg?seed=3',1,NULL,1,0,0,0,'2025-06-14 02:44:40','2026-06-19 16:52:43','2025-08-21 02:44:40'),(15,'user015_倪杰','$2a$10$D/hj7mpy4ogkivZXGR9w8.fSQq8G23wnbfLtxWi8Vo2/7bg6Mq.T6','user015_9856@example.com','13200140141','FilmNerd22','https://api.dicebear.com/7.x/bottts/svg?seed=2',1,NULL,1,0,0,0,'2023-06-18 13:47:52','2026-06-19 16:52:43','2023-07-04 13:47:52'),(16,'user016_袁轩云','$2a$10$s7TQChlV29LF.IjVwbbgOuXqcG17SxZfq1s4Txd48f.yd5NMvkY0m','user016_3536@example.com','14418587604','Cinephile8','https://api.dicebear.com/7.x/initials/svg?seed=AB',2,NULL,1,0,0,0,'2023-02-28 01:49:32','2026-06-19 16:52:43','2023-05-15 01:49:32'),(17,'user017_薛刚','$2a$10$RQ.tlRxCZU6nXNxAZZfoZOwz6XuBihZQyPKSKy1cFmUSXv2a4JEeO','user017_9320@example.com','13299528037','爆米花杀手77','https://api.dicebear.com/7.x/avataaars/svg?seed=2',2,NULL,1,0,0,0,'2023-09-10 21:04:40','2026-06-19 16:52:43',NULL),(18,'user018_褚妍辰','$2a$10$pJ1CnzMkFNwN0F4oSWCnZep82dOqMlybkn0dCGD0aCczl6hx0xfk2','user018_5272@example.com','14819112790','三刷强迫症31','https://api.dicebear.com/7.x/avataaars/svg?seed=5',1,NULL,1,0,0,0,'2024-04-13 11:30:41','2026-06-14 21:57:44','2024-05-16 11:30:41'),(19,'user019_钱月杰','$2a$10$jTc5v8BJXhqINuUnUa7zZuuH/2hfmcb9rWjR1Do2ygxtqZ0lBK4MW','user019_2200@example.com','18328872698','动作片铁粉34','https://api.dicebear.com/7.x/avataaars/svg?seed=3',1,NULL,1,0,0,0,'2023-06-11 15:57:13','2026-06-14 21:57:44','2023-07-26 15:57:13'),(20,'user020_安芳泽','$2a$10$lmHDaNyclv1uMTwLWH4N4uTExw.p87n11TgAi/YkM.g4ahJDFO/V6','user020_2697@example.com','14383968123','奥斯卡预言家14','https://api.dicebear.com/7.x/identicon/svg?seed=2',0,NULL,1,0,0,0,'2025-01-04 12:29:02','2026-06-14 21:57:44','2025-03-05 12:29:02'),(21,'user021_谢云','$2a$10$U.Az2JTk3Mw.3RkBoYEhcuqDfSAIKkLLDM9swIJAHFozplkkmkaNu','user021_1832@example.com','13781057736','毕赣梦女36','https://api.dicebear.com/7.x/avataaars/svg?seed=1',0,NULL,1,0,0,0,'2023-09-26 05:52:58','2026-06-19 16:52:43','2023-12-03 05:52:58'),(22,'user022_花芳','$2a$10$hZm8hCKhrAqKnfAY4sqP2Ou4mZQ6HLGKuIZutv1JHGBU1UJL6eEiq','user022_3442@example.com','18138684919','诺兰粉头75','https://api.dicebear.com/7.x/identicon/svg?seed=2',0,NULL,1,0,0,0,'2024-01-09 01:27:09','2026-06-19 16:52:43','2024-03-20 01:27:09'),(23,'user023_姜娟琳','$2a$10$10tiydzl/qttjNrnrwZWteMcxaYK4lePLw4G9C7M8st52Q6Di9/Xu','user023_3532@example.com','14274484941','编剧练习生53','https://api.dicebear.com/7.x/avataaars/svg?seed=1',0,NULL,1,0,0,0,'2025-04-01 09:02:07','2026-06-19 16:52:43','2025-05-23 09:02:07'),(24,'user024_沈佳阳','$2a$10$xGqBRBJwB5YfCE.rc3.nVORz9Cl9hIMQ7grfM5NJLyxQFx5Qh6Fzm','user024_4644@example.com','14976803188','文艺片爱好者45','https://api.dicebear.com/7.x/avataaars/svg?seed=5',2,NULL,1,0,0,0,'2023-07-17 14:30:27','2026-06-14 21:57:44','2023-07-31 14:30:27'),(25,'user025_喻一瑶','$2a$10$ef1wf21dLpzFnOuYdPpIQu5LkghvLursdG2dcb0BzYXocpfcHi7BW','user025_9785@example.com','15129635852','奥斯卡预言家34','https://api.dicebear.com/7.x/avataaars/svg?seed=3',1,NULL,1,0,0,0,'2024-03-20 12:35:09','2026-06-14 21:57:44','2024-05-09 12:35:09'),(26,'user026_邬涛建','$2a$10$cgcmgwe6J9ZldjpQZV/ybeaXAG9v9ug.Y/BhWY8twADvDPx3rCKfy','user026_5173@example.com','13861052404','毕赣梦女1','https://api.dicebear.com/7.x/identicon/svg?seed=2',2,NULL,1,0,0,0,'2025-01-24 07:10:25','2026-06-14 21:57:44','2025-04-05 07:10:25'),(27,'user027_卞涵明','$2a$10$XhsUcUDJusJ8MnggOkuPCerHzPUOribrrRt4J4eHHOm2t8vxWppEK','user027_5920@example.com','18432091877','贾樟柯同乡42','https://api.dicebear.com/7.x/bottts/svg?seed=2',2,NULL,1,0,0,0,'2024-03-06 13:48:15','2026-06-14 21:57:44','2024-04-07 13:48:15'),(28,'user028_安泽伟','$2a$10$rUljEEEzSB6TPGQjTA3h2u/5sx9nnSeIQDNN3LMd6quCnAbmNwHcK','user028_5978@example.com','15325681936','毕赣梦女75','https://api.dicebear.com/7.x/initials/svg?seed=AB',2,NULL,1,0,0,0,'2024-11-22 07:46:50','2026-06-14 21:57:44','2025-02-03 07:46:50'),(29,'user029_平桂轩','$2a$10$vW9oD9LAlOj7yBBcEKC/7e4OZGjCOP1mAFisrmQwpFVLRNLAAVkPW','user029_9445@example.com','19779615069','IMAX信徒12','https://api.dicebear.com/7.x/avataaars/svg?seed=4',2,NULL,1,0,0,0,'2023-01-26 01:40:57','2026-06-14 21:57:44','2023-03-13 01:40:57'),(30,'user030_陈月建','$2a$10$WzcCNA2wvBQbAliQ5wszFuow/9y797cBRKdZSz24CdsDonhAxNtAe','user030_7291@example.com','17529123992','FilmNerd19','https://api.dicebear.com/7.x/avataaars/svg?seed=1',2,NULL,1,0,0,0,'2023-06-30 18:51:29','2026-06-19 16:52:43',NULL),(31,'lzh','$2a$10$HYg9xRHFfrYdjbBenJ3QseX74VS/jTONgcx3KHBKdWIva6dKU3Anm','','13500265434','lzh5039','/uploads/images/avatar/b4cc63c22aa34b0dad57779025ba09d0.png',0,NULL,1,2,1,1,'2026-06-15 23:07:01','2026-07-28 20:51:58',NULL);
+CREATE TABLE IF NOT EXISTS `vip_product` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '套餐ID',
+  `name` varchar(50) NOT NULL COMMENT '套餐名称',
+  `duration_days` int NOT NULL COMMENT '会员时长，单位：天',
+  `price` decimal(10,2) NOT NULL COMMENT '套餐价格',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0下架，1上架',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VIP套餐表';
+INSERT IGNORE INTO `vip_product` (`id`,`name`,`duration_days`,`price`,`status`) VALUES
+  (1,'月度会员',30,19.90,1),
+  (2,'季度会员',90,49.90,1),
+  (3,'年度会员',365,168.00,1);
+
+CREATE TABLE IF NOT EXISTS `user_vip` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '会员记录ID',
+  `user_id` bigint unsigned NOT NULL COMMENT '用户ID',
+  `start_time` datetime NOT NULL COMMENT '会员开始时间',
+  `expire_time` datetime NOT NULL COMMENT '会员到期时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_id` (`user_id`),
+  KEY `idx_expire_time` (`expire_time`),
+  CONSTRAINT `fk_user_vip_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户会员表';
+
+CREATE TABLE IF NOT EXISTS `payment_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '订单ID',
+  `order_no` varchar(32) NOT NULL COMMENT '业务订单号',
+  `request_id` varchar(64) NOT NULL COMMENT '客户端创建订单幂等键',
+  `user_id` bigint unsigned NOT NULL COMMENT '用户ID',
+  `product_id` bigint NOT NULL COMMENT 'VIP套餐ID',
+  `duration_days` int NOT NULL COMMENT '下单时的VIP套餐时长快照，单位：天',
+  `amount` decimal(10,2) NOT NULL COMMENT '订单金额',
+  `payment_method` tinyint NOT NULL COMMENT '支付方式：1支付宝，2微信',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '0待发起，1支付成功，2已关闭，3已退款，4发起中，5待支付，6关单中，7退款中',
+  `transaction_id` varchar(64) DEFAULT NULL COMMENT '第三方支付交易号',
+  `payment_payload` mediumtext COMMENT '支付页面HTML或二维码URL',
+  `expire_time` datetime NOT NULL COMMENT '订单支付截止时间',
+  `pay_time` datetime DEFAULT NULL COMMENT '支付成功时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_no` (`order_no`),
+  UNIQUE KEY `uk_user_request` (`user_id`,`request_id`),
+  UNIQUE KEY `uk_payment_transaction` (`payment_method`,`transaction_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_product_id` (`product_id`),
+  KEY `idx_status_expire_time` (`status`,`expire_time`),
+  CONSTRAINT `fk_payment_order_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
+  CONSTRAINT `fk_payment_order_product` FOREIGN KEY (`product_id`) REFERENCES `vip_product` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付订单表';
+
 CREATE TABLE IF NOT EXISTS `user_follow` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL COMMENT '关注者ID',
