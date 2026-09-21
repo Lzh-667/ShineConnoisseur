@@ -46,6 +46,4 @@ dump_raw.sql
 logs/
 *.log
 
-# AI Agent 独立项目
-/agent/
 /backend/ShineConnoisseur/.claude/settings.local.json

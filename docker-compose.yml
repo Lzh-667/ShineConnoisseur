@@ -107,6 +107,64 @@ services:
       retries: 10
       start_period: 60s
 
+  agent:
+    profiles: ["ai"]
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: shineconnoisseur-agent
+    restart: unless-stopped
+    ports:
+      - "${AGENT_PORT:-8001}:8001"
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-pro}
+      DEEPSEEK_REASONER_MODEL: ${DEEPSEEK_REASONER_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_INPUT_PRICE: ${DEEPSEEK_INPUT_PRICE:-0}
+      DEEPSEEK_OUTPUT_PRICE: ${DEEPSEEK_OUTPUT_PRICE:-0}
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
+      SILICONFLOW_BASE_URL: ${SILICONFLOW_BASE_URL:-https://api.siliconflow.cn/v1}
+      SILICONFLOW_EMBEDDING_MODEL: ${SILICONFLOW_EMBEDDING_MODEL:-BAAI/bge-m3}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1024}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-shineconnoisseur}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      REDIS_DB: ${AGENT_REDIS_DB:-0}
+      ES_URL: http://elasticsearch:9200
+      BACKEND_URL: http://backend:8080
+      AGENT_HOST: 0.0.0.0
+      AGENT_PORT: "8001"
+      AGENT_CHECKPOINT: ${AGENT_CHECKPOINT:-sqlite}
+      CHAT_RATE_LIMIT: ${CHAT_RATE_LIMIT:-10}
+      AGENT_COOKIE_SECURE: ${AGENT_COOKIE_SECURE:-false}
+      ADMIN_TOOL_INVOKE_ENABLED: ${ADMIN_TOOL_INVOKE_ENABLED:-false}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - agent-data:/app/data
+    networks:
+      - shine-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/docs', timeout=5)"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 60s
+
   backend:
     build:
       context: ./backend/ShineConnoisseur
@@ -186,6 +244,8 @@ volumes:
     name: shineconnoisseur_es_data
   uploads-data:
     name: shineconnoisseur_uploads
+  agent-data:
+    name: shineconnoisseur_agent_data
 
 networks:
   shine-network:

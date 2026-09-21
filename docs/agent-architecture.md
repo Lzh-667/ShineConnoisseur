@@ -10,7 +10,7 @@ Agent 是影评社区的 AI 助手：帮用户发现电影、查影评、获推�
 
 **技术栈**：Python 3.13 + FastAPI + LangChain 1.x（`create_agent`）+ LangGraph（checkpointer）
 
-**外部依赖**（与后端共享基础设施，直连 `192.168.100.129`）：
+**外部依赖**（与后端共享基础设施，连接地址由环境变量注入；Docker 环境使用 Compose 服务名）：
 
 | 依赖 | 用途 | 共享方式 |
 |------|------|---------|
@@ -330,6 +330,15 @@ Redis 滑动窗口：`INCR agent:rate:{userId}` + 首次 `EXPIRE 60s`，超过 `
 
 ## 11. 部署运行
 
+主项目已将 Agent 注册为 Git Submodule，并通过可选 Compose Profile 编排：
+
+```bash
+git submodule update --init --recursive
+docker compose --profile ai up -d --build
+```
+
+也可以单独进行本地开发：
+
 ```bash
 cd agent
 python -m venv .venv
@@ -343,8 +352,8 @@ cp .env.example .env
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `DEEPSEEK_API_KEY` / `SILICONFLOW_API_KEY` | 空 | 未配置时 health 检查报 fail，也可用系统环境变量 |
-| `MYSQL_HOST` / `REDIS_HOST` / `ES_URL` | `192.168.100.129` | 与后端共享基础设施 |
-| `BACKEND_URL` | `http://localhost:8080` | 写操作走后端 REST |
+| `MYSQL_HOST` / `REDIS_HOST` / `ES_URL` | 必填 | Compose 中分别使用 `mysql`、`redis`、`http://elasticsearch:9200` |
+| `BACKEND_URL` | `http://localhost:8080` | Compose 中使用 `http://backend:8080`，写操作走后端 REST |
 | `AGENT_CHECKPOINT` | `sqlite` | `sqlite`（生产）/ `memory`（调试） |
 | `CHAT_RATE_LIMIT` | 10 | 每分钟聊天次数 |
 | `DEEPSEEK_MODEL` / `DEEPSEEK_REASONER_MODEL` | `deepseek-v4-pro` / `deepseek-v4-flash` | 双模型 |

@@ -1,0 +1,4 @@
+[submodule "agent"]
+	path = agent
+	url = https://github.com/Lzh-667/ShineConnoisseur-Agent.git
+	branch = feature
