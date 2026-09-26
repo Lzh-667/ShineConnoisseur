@@ -7,6 +7,7 @@ import com.lzh.service.impl.PaymentOrderCloseService;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,11 @@ import java.util.List;
 /** 后台关闭过期订单，避免由查询接口触发有副作用的关单。 */
 @Slf4j
 @Component
+@ConditionalOnProperty(
+        name = "payment.expiration-enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 @RequiredArgsConstructor
 public class PaymentOrderExpirationTask {
 

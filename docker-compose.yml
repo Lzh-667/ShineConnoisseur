@@ -204,6 +204,7 @@ services:
       # 本地默认没有支付平台证书，关闭主动对账以避免无意义的周期性错误；
       # 配置真实支付凭据后显式设为 true。
       PAYMENT_RECONCILIATION_ENABLED: ${PAYMENT_RECONCILIATION_ENABLED:-false}
+      PAYMENT_EXPIRATION_ENABLED: ${PAYMENT_EXPIRATION_ENABLED:-false}
       TZ: ${TZ:-Asia/Shanghai}
       JAVA_OPTS: ${JAVA_OPTS:--Xms512m -Xmx512m}
     volumes:
