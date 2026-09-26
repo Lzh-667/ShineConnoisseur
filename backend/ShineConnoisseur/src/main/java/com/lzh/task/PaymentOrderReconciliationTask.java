@@ -8,6 +8,7 @@ import com.lzh.service.impl.PaymentOrderStateService;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,11 @@ import java.util.Objects;
 /** 主动查单，弥补回调丢失、渠道调用结果未知以及退款处理中断。 */
 @Slf4j
 @Component
+@ConditionalOnProperty(
+        name = "payment.reconciliation-enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 @RequiredArgsConstructor
 public class PaymentOrderReconciliationTask {
 

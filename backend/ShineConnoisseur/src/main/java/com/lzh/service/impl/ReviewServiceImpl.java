@@ -573,6 +573,13 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         String oldKey = RedisConstants.HOT_REVIEW_KEY;
         String newKey = RedisConstants.HOT_REVIEW_KEY + ":temp";
         stringRedisTemplate.delete(newKey);
+        if (hotReviews.isEmpty()) {
+            // Redis 不允许 RENAME 一个不存在的 key。首次启动或最近 30 天无影评时，
+            // 直接清理旧榜单即可，避免定时任务持续抛出 ERR no such key。
+            stringRedisTemplate.delete(oldKey);
+            log.info("更新热门影评缓存成功，当前无可缓存影评");
+            return;
+        }
         for(ReviewHotDTO review:hotReviews){
             stringRedisTemplate.opsForZSet()
                     .add(
@@ -754,4 +761,3 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         }
     }
 }
-
