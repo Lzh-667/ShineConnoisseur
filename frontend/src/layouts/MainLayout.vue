@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bell, SwitchButton } from '@element-plus/icons-vue'
+import UserAvatar from '../components/UserAvatar.vue'
+import VipBadge from '../components/VipBadge.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -37,25 +39,43 @@ function handleLogout() {
   }).catch(() => {})
 }
 
+function refreshHeaderState() {
+  userStore.fetchUnreadCount()
+  userStore.refreshVipStatus()
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  refreshHeaderState()
+  pollTimer = setInterval(refreshHeaderState, 30000)
+}
+
 watch(() => userStore.isLoggedIn, (val) => {
   if (val) {
-    userStore.fetchUnreadCount()
-    pollTimer = setInterval(() => userStore.fetchUnreadCount(), 30000)
+    startPolling()
   } else {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+    stopPolling()
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   if (userStore.isLoggedIn) {
-    userStore.init()
-    userStore.fetchUnreadCount()
-    pollTimer = setInterval(() => userStore.fetchUnreadCount(), 30000)
+    await userStore.init()
+    startPolling()
   }
+  window.addEventListener('focus', refreshHeaderState)
 })
 
 onUnmounted(() => {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  stopPolling()
+  window.removeEventListener('focus', refreshHeaderState)
 })
 </script>
 
@@ -91,8 +111,9 @@ onUnmounted(() => {
             </router-link>
 
             <div class="user-trigger" @click="router.push('/profile')">
-              <el-avatar :size="32" :src="userStore.userInfo?.avatar" />
-              <span class="user-name">{{ userStore.userInfo?.nickname || userStore.userInfo?.username || '用户' }}</span>
+              <UserAvatar :size="32" :src="userStore.userInfo?.avatar" :vip="userStore.userInfo?.vip" />
+              <span class="user-name" :class="{ 'vip-name': userStore.userInfo?.vip }">{{ userStore.userInfo?.nickname || userStore.userInfo?.username || '用户' }}</span>
+              <VipBadge v-if="userStore.userInfo?.vip" compact />
             </div>
             <button class="logout-btn" title="退出登录" @click="handleLogout">
               <el-icon :size="18"><SwitchButton /></el-icon>

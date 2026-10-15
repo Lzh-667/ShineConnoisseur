@@ -8,6 +8,7 @@ import com.lzh.dto.UserDTO;
 import com.lzh.po.User;
 import com.lzh.po.UserFollow;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -44,6 +45,7 @@ class FollowServiceImplTest {
     @Mock private ZSetOperations<String, String> zSetOperations;
     @Mock private IUserService userService;
     @Mock private RabbitTemplate rabbitTemplate;
+    @Mock private VipIdentityService vipIdentityService;
 
     @Mock private QueryChainWrapper<UserFollow> followQueryChain;
     @Mock private UpdateChainWrapper<User> userUpdateChain;

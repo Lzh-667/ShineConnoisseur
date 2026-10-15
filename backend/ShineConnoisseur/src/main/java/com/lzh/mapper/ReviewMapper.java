@@ -10,6 +10,10 @@ import org.apache.ibatis.annotations.Update;
 
 public interface ReviewMapper extends BaseMapper<Review> {
 
+    /** 排除已评价电影时包含已删除、已封禁影评；这些评分不参与偏好计算。 */
+    @Select("SELECT DISTINCT movie_id FROM review WHERE user_id = #{userId}")
+    java.util.List<Long> selectHistoricalMovieIds(@Param("userId") Long userId);
+
     @Select("SELECT * FROM review WHERE status IN (1, 2) ORDER BY create_time DESC")
     IPage<Review> selectAdminPage(Page<Review> page);
 

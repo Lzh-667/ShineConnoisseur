@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { getChildComments, publishComment, likeComment, deleteComment } from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import UserAvatar from './UserAvatar.vue'
+import VipBadge from './VipBadge.vue'
 
 const props = defineProps({
   comment: { type: Object, required: true },
@@ -112,11 +114,11 @@ function goToUser(id) { router.push(`/users/${id}`) }
 <template>
   <div class="comment-item">
     <div class="comment-main">
-      <el-avatar :size="32" :src="comment.author?.avatar" class="comment-avatar" @click="goToUser(comment.author?.id)" />
+      <UserAvatar :size="32" :src="comment.author?.avatar" :vip="comment.author?.vip" class="comment-avatar" @click="goToUser(comment.author?.id)" />
       <div class="comment-body">
         <div class="comment-top">
-          <span class="comment-author" @click="goToUser(comment.author?.id)">{{ comment.author?.nickname || comment.author?.username }}</span>
-          <span v-if="comment.replyUser" class="reply-target">回复 <span class="link" @click="goToUser(comment.replyUser.id)">@{{ comment.replyUser.nickname || comment.replyUser.username }}</span></span>
+          <span class="identity-line"><span class="comment-author" :class="{ 'vip-name': comment.author?.vip }" @click="goToUser(comment.author?.id)">{{ comment.author?.nickname || comment.author?.username }}</span><VipBadge v-if="comment.author?.vip" compact /></span>
+          <span v-if="comment.replyUser" class="reply-target">回复 <span class="link" :class="{ 'vip-name': comment.replyUser.vip }" @click="goToUser(comment.replyUser.id)">@{{ comment.replyUser.nickname || comment.replyUser.username }}</span> <VipBadge v-if="comment.replyUser.vip" compact /></span>
           <span class="comment-time">{{ formatTime(comment.createTime) }}</span>
         </div>
         <p class="comment-content">{{ comment.content }}</p>

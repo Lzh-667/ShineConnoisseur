@@ -71,6 +71,8 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     private ElasticsearchOperations elasticsearchOperations;
     @Resource
     private ReviewSearchRepository reviewSearchRepository;
+    @Resource
+    private VipIdentityService vipIdentityService;
     @Transactional
     @Override
     public Result publishReview(ReviewDTO reviewDTO,Long movieId) {
@@ -592,6 +594,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         log.info("更新热门影评缓存成功");
     }
     private List<ReviewVO> getReviewVOList(List<Review> reviewList, Map<Long, User> userMap, Set<Long> likeReviewIds, Long userId, Map<Long, Movie> movieMap) {
+        Set<Long> vipUserIds = vipIdentityService.activeUserIds(userMap.keySet());
         return reviewList.stream()
                 .map(
                         review -> {
@@ -602,6 +605,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                                 vo.setUserName(user.getUsername());
                                 vo.setNickName(user.getNickname());
                                 vo.setAvatar(user.getAvatar());
+                                vo.setVip(vipUserIds.contains(user.getId()));
                             }
                             Movie movie = movieMap.get(review.getMovieId());
                             if (movie != null) {

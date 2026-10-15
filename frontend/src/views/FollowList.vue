@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { getFollowingList, getFollowerList, toggleFollow, isFollowing } from '../api'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/modules/user'
+import UserAvatar from '../components/UserAvatar.vue'
+import VipBadge from '../components/VipBadge.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -64,9 +66,9 @@ watch(() => route.name, () => { current.value = 1; load() })
     <template v-else>
       <div class="user-list">
         <div v-for="(u, i) in list" :key="u.id" class="user-item" @click="router.push(`/users/${u.id}`)">
-          <el-avatar :size="44" :src="u.avatar" />
+          <UserAvatar :size="44" :src="u.avatar" :vip="u.vip" />
           <div class="user-body">
-            <span class="user-name">{{ u.nickname || u.username }}</span>
+            <span class="identity-line"><span class="user-name" :class="{ 'vip-name': u.vip }">{{ u.nickname || u.username }}</span><VipBadge v-if="u.vip" /></span>
             <span class="user-bio">{{ u.bio || '' }}</span>
           </div>
           <el-button

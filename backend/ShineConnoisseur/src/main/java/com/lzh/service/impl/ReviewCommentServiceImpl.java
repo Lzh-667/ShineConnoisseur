@@ -19,6 +19,7 @@ import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IReviewCommentService;
 import com.lzh.service.IReviewService;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
@@ -55,6 +56,8 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private RabbitTemplate rabbitTemplate;
+    @Resource
+    private VipIdentityService vipIdentityService;
 
     @Transactional
     @Override
@@ -183,6 +186,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         }
         // 5. 查询用户
         Map<Long, User> userMap = getUserMap(rcList);
+        Set<Long> vipUserIds = vipIdentityService.activeUserIds(userMap.keySet());
         // 6. 包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
@@ -192,6 +196,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
                     UserDTO authorDTO = new UserDTO();
                     BeanUtils.copyProperties(userMap.get(rc.getUserId()), authorDTO);
+                    authorDTO.setVip(vipUserIds.contains(rc.getUserId()));
                     rcVO.setAuthor(authorDTO);
 
                     rcVO.setReplyUser(null);
@@ -239,6 +244,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         // 5. 查询用户
         Map<Long, User> userMap = getUserMap(rcList);
         Map<Long, User> replyUserMap = getReplyUserMap(rcList);
+        Set<Long> vipUserIds = vipIdentityService.activeUserIds(
+                java.util.stream.Stream.concat(userMap.keySet().stream(), replyUserMap.keySet().stream()).toList()
+        );
         // 6. 包装为VO
         List<ReviewCommentVO> rcListVO = rcList.stream()
                 .map(
@@ -248,10 +256,12 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
                             UserDTO authorDTO = new UserDTO();
                             BeanUtils.copyProperties(userMap.get(rc.getUserId()), authorDTO);
+                            authorDTO.setVip(vipUserIds.contains(rc.getUserId()));
                             rcVO.setAuthor(authorDTO);
 
                             UserDTO replyUserDTO = new UserDTO();
                             BeanUtils.copyProperties(replyUserMap.get(rc.getReplyUserId()), replyUserDTO);
+                            replyUserDTO.setVip(vipUserIds.contains(rc.getReplyUserId()));
                             rcVO.setReplyUser(replyUserDTO);
 
                             rcVO.setCanEditAndDelete(rc.getUserId().equals(userId));
@@ -463,6 +473,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         UserDTO authorDTO = new UserDTO();
         BeanUtils.copyProperties(userService.getById(userId), authorDTO);
         Map<Long, User> replyUserMap = getReplyUserMap(rcList);
+        Set<Long> vipUserIds = vipIdentityService.activeUserIds(
+                java.util.stream.Stream.concat(java.util.stream.Stream.of(userId), replyUserMap.keySet().stream()).toList()
+        );
+        authorDTO.setVip(vipUserIds.contains(userId));
         // 4.1 批量查询根评论的回复数
         Set<Long> myRootIds = rcList.stream()
                 .filter(c -> c.getReplyUserId() == 0)
@@ -493,6 +507,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     if(comment.getReplyUserId()!=0){
                         UserDTO replyUserDTO = new UserDTO();
                         BeanUtils.copyProperties(replyUserMap.get(comment.getReplyUserId()), replyUserDTO);
+                        replyUserDTO.setVip(vipUserIds.contains(comment.getReplyUserId()));
                         vo.setReplyUser(replyUserDTO);
                         vo.setReplyCount(0L);
                     } else {

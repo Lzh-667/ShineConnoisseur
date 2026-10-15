@@ -5,6 +5,8 @@ import { useUserStore } from '../stores/modules/user'
 import { getUserInfo, toggleFollow, isFollowing, getUserReviews } from '../api'
 import ReviewCard from '../components/ReviewCard.vue'
 import { ElMessage } from 'element-plus'
+import UserAvatar from '../components/UserAvatar.vue'
+import VipBadge from '../components/VipBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,9 +77,9 @@ onMounted(load)
     <div v-if="loading" class="loading-text">加载中...</div>
     <template v-else-if="info">
       <div class="profile-header">
-        <el-avatar :size="80" :src="info.avatar" />
+        <UserAvatar :size="80" :src="info.avatar" :vip="info.vip" />
         <div class="profile-info">
-          <h2>{{ info.nickname || info.username }}</h2>
+          <div class="identity-line"><h2 :class="{ 'vip-name': info.vip }">{{ info.nickname || info.username }}</h2><VipBadge v-if="info.vip" /></div>
           <p class="bio">{{ info.bio || '这个人很懒，什么都没写' }}</p>
           <p class="username">@{{ info.username }}</p>
         </div>

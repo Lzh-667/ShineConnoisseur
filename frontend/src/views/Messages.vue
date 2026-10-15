@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { getMessages, markMessageRead, markAllMessagesRead, getCommentTarget } from '../api'
 import { ElMessage } from 'element-plus'
+import UserAvatar from '../components/UserAvatar.vue'
+import VipBadge from '../components/VipBadge.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -59,7 +61,7 @@ async function handleClick(msg) {
   if (msg.status === 0) handleMarkRead(msg)
   const { type, targetType, targetId, fromUser } = msg
   if (type === 0 || targetType === 0) {
-    router.push(`/users/${fromUser.id}`)
+    if (fromUser?.id) router.push(`/users/${fromUser.id}`)
   } else if (targetType === 1) {
     router.push(`/reviews/${targetId}`)
   } else if (targetType === 2) {
@@ -99,10 +101,10 @@ onMounted(load)
     <template v-else>
       <div class="msg-list">
         <div v-for="msg in list" :key="msg.id" class="msg-item" :class="{ unread: msg.status === 0 }" @click="handleClick(msg)">
-          <el-avatar :size="40" :src="msg.fromUser?.avatar" />
+          <UserAvatar :size="40" :src="msg.fromUser?.avatar" :vip="msg.fromUser?.vip" />
           <div class="msg-body">
             <div class="msg-top">
-              <span class="msg-user">{{ msg.fromUser?.nickname || msg.fromUser?.username }}</span>
+              <span class="identity-line"><span class="msg-user" :class="{ 'vip-name': msg.fromUser?.vip }">{{ msg.fromUser?.nickname || msg.fromUser?.username }}</span><VipBadge v-if="msg.fromUser?.vip" compact /></span>
               <span class="msg-type-tag">{{ typeLabels[msg.type] || msg.type }}</span>
             </div>
             <div class="msg-content">{{ msg.content }}</div>

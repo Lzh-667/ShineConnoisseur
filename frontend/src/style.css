@@ -22,6 +22,9 @@ a { color: inherit; text-decoration: none; }
 img { max-width: 100%; display: block; }
 button { font-family: inherit; }
 
+.vip-name { color:#ffd36a !important; text-shadow:0 0 12px rgba(245,175,25,.18); }
+.identity-line { display:inline-flex; align-items:center; gap:6px; min-width:0; }
+
 /* =============================================
    Design Tokens
    ============================================= */

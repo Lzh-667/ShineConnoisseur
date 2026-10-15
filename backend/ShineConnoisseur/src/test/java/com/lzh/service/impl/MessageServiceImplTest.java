@@ -4,12 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.conditions.query.QueryChainWrapper;
 import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.common.PageResult;
 import com.lzh.dto.UserDTO;
 import com.lzh.po.Message;
 import com.lzh.po.User;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
+import com.lzh.vo.MessageVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,7 @@ import static org.mockito.Mockito.*;
 class MessageServiceImplTest {
 
     @Mock private IUserService userService;
+    @Mock private VipIdentityService vipIdentityService;
     @Mock private QueryChainWrapper<Message> messageQueryChain;
     @Mock private LambdaUpdateChainWrapper<Message> lambdaUpdateChain;
 
@@ -116,6 +120,32 @@ class MessageServiceImplTest {
         var result = messageService.listAll(1, null);
 
         assertTrue(result.getSuccess());
+    }
+
+    @Test
+    void listAll_missingOneSender_keepsMessagesAndDoesNotThrow() {
+        Message existingSenderMessage = buildMessage(1L, 2L, SystemConstants.MESSAGE_TYPE_FOLLOW);
+        Message missingSenderMessage = buildMessage(2L, 99L, SystemConstants.MESSAGE_TYPE_FOLLOW);
+        Page<Message> page = new Page<>(1, 10);
+        page.setRecords(List.of(existingSenderMessage, missingSenderMessage));
+        page.setTotal(2);
+        when(messageQueryChain.page(any(Page.class))).thenReturn(page);
+
+        User fromUser = new User();
+        fromUser.setId(2L);
+        fromUser.setUsername("existingUser");
+        when(userService.listByIds(anyList())).thenReturn(List.of(fromUser));
+
+        var result = messageService.listAll(1, null);
+
+        assertTrue(result.getSuccess());
+        @SuppressWarnings("unchecked")
+        PageResult<MessageVO> data = (PageResult<MessageVO>) result.getData();
+        assertEquals(2L, data.getTotal());
+        assertEquals(2, data.getRecords().size());
+        assertNotNull(data.getRecords().get(0).getFromUser());
+        assertNull(data.getRecords().get(1).getFromUser());
+        verify(vipIdentityService).enrich(anyList());
     }
 
     // ==================== unreadCount ====================

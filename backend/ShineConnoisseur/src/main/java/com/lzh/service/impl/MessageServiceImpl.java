@@ -12,6 +12,7 @@ import com.lzh.po.Message;
 import com.lzh.po.User;
 import com.lzh.service.IMessageService;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import com.lzh.vo.MessageVO;
@@ -31,6 +32,8 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
     @Resource
     private IUserService userService;
+    @Resource
+    private VipIdentityService vipIdentityService;
     @Override
     public Result listAll(Integer current, Integer type) {
         //1.获取当前用户
@@ -69,10 +72,13 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
                     MessageVO vo = new MessageVO();
                     BeanUtils.copyProperties(message, vo);
                     //查询发送人
-                    UserDTO fromUserDTO = BeanUtil.copyProperties(userMap.get(message.getFromUserId()), UserDTO.class);
-                    vo.setFromUser(fromUserDTO);
+                    User fromUser = userMap.get(message.getFromUserId());
+                    if (fromUser != null) {
+                        vo.setFromUser(BeanUtil.copyProperties(fromUser, UserDTO.class));
+                    }
                     return vo;
                 }).toList();
+        vipIdentityService.enrich(vos.stream().map(MessageVO::getFromUser).toList());
 
         //7.封装并返回
         PageResult<MessageVO> result = new PageResult<>();

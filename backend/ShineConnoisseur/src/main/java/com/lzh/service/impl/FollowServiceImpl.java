@@ -15,6 +15,7 @@ import com.lzh.po.User;
 import com.lzh.po.UserFollow;
 import com.lzh.service.IFollowService;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
@@ -44,6 +45,8 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     private IUserService userService;
     @Resource
     private RabbitTemplate rabbitTemplate;
+    @Resource
+    private VipIdentityService vipIdentityService;
     @Override
     public Result getFollowerList(Integer current) {
         // 1. 获取当前用户ID
@@ -127,10 +130,12 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                         (existing, replacement) -> existing  // 遇到重复 key，保留第一个
                 ));
 
-        return ids.stream()
+        List<UserDTO> result = ids.stream()
                 .map(map::get)
                 .filter(Objects::nonNull) // 排除关注关系存在，但用户已被删除的脏数据
                 .toList();
+        vipIdentityService.enrich(result);
+        return result;
     }
     private Result tryGetListFromRedis(String key, Integer current) {
         try {

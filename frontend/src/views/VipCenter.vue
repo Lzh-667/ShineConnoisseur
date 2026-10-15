@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Clock, CreditCard, Refresh, Wallet } from '@element-plus/icons-vue'
+import { Check, Clock, CreditCard, Medal, Refresh, StarFilled, UserFilled, Wallet } from '@element-plus/icons-vue'
 import QRCode from 'qrcode'
+import { useUserStore } from '../stores/modules/user'
 import {
   cancelPaymentOrder,
   createPaymentOrder,
@@ -14,6 +15,7 @@ import {
 } from '../api'
 
 const products = ref([])
+const userStore = useUserStore()
 const vip = ref(null)
 const loading = ref(false)
 const paying = ref(false)
@@ -58,6 +60,7 @@ async function loadPage() {
     const [productRes, vipRes] = await Promise.all([getVipProducts(), getMyVip()])
     products.value = productRes.data?.records || []
     vip.value = vipRes.data
+    if (userStore.userInfo) userStore.userInfo.vip = vip.value?.vip === true
     if (!selectedProductId.value && products.value.length) {
       selectedProductId.value = products.value[0].id
     }
@@ -126,6 +129,7 @@ async function refreshOrder(showMessage = false) {
       stopPolling()
       const vipRes = await getMyVip()
       vip.value = vipRes.data
+      if (userStore.userInfo) userStore.userInfo.vip = vip.value?.vip === true
       ElMessage.success('支付成功，VIP 权益已生效')
     } else if ([2, 3].includes(order.value.status)) {
       stopPolling()
@@ -189,6 +193,25 @@ onUnmounted(stopPolling)
           <span v-if="vip?.vip">有效期至 {{ formatDate(vip.expireTime) }}</span>
           <span v-else>开通后即可点亮会员身份</span>
         </div>
+      </div>
+    </section>
+
+    <section class="identity-benefits">
+      <router-link to="/vip/recommendations" class="benefit-card">
+        <span class="benefit-icon"><el-icon><StarFilled /></el-icon></span>
+        <div><strong>个性化电影推荐 →</strong><p>结合收藏与评分发现新电影，附专属推荐理由。</p></div>
+      </router-link>
+      <div class="benefit-card">
+        <span class="benefit-icon"><el-icon><Medal /></el-icon></span>
+        <div><strong>专属 VIP 徽章</strong><p>在影评、评论、关注与消息中展示会员身份。</p></div>
+      </div>
+      <div class="benefit-card">
+        <span class="benefit-icon"><el-icon><StarFilled /></el-icon></span>
+        <div><strong>金色会员昵称</strong><p>社区昵称使用专属金色高亮，更醒目地表达身份。</p></div>
+      </div>
+      <div class="benefit-card">
+        <span class="benefit-icon"><el-icon><UserFilled /></el-icon></span>
+        <div><strong>光影渐变头像环</strong><p>个人主页、导航栏及互动场景统一点亮头像。</p></div>
       </div>
     </section>
 
@@ -299,6 +322,11 @@ onUnmounted(stopPolling)
 .vip-state div { display: flex; flex-direction: column; }
 .vip-state strong { color: rgba(255,255,255,.86); }
 .vip-state span { font-size: 12px; margin-top: 3px; color: rgba(255,255,255,.38); }
+.identity-benefits { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:32px; }
+.benefit-card { display:flex; align-items:flex-start; gap:12px; padding:18px; border:1px solid rgba(245,175,25,.14); border-radius:14px; background:linear-gradient(145deg,rgba(245,175,25,.07),rgba(255,255,255,.025)); }
+.benefit-icon { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; flex:0 0 auto; border-radius:11px; background:rgba(245,175,25,.12); color:#ffd36a; font-size:19px; }
+.benefit-card strong { color:rgba(255,255,255,.86); font-size:14px; }
+.benefit-card p { margin:5px 0 0; color:rgba(255,255,255,.4); font-size:12px; line-height:1.6; }
 .plans-section { min-height: 260px; margin-top: 46px; }
 .section-title { display: flex; align-items: end; justify-content: space-between; margin-bottom: 20px; }
 .section-title h2 { color: rgba(255,255,255,.9); font-size: 25px; margin-top: 3px; }
@@ -336,6 +364,7 @@ onUnmounted(stopPolling)
 .dialog-actions { display: flex; justify-content: flex-end; }
 @media (max-width: 760px) {
   .vip-page { padding: 24px 16px 56px; }
+  .identity-benefits { grid-template-columns:1fr; }
   .hero-card { padding: 28px 24px; flex-direction: column; align-items: stretch; }
   .vip-state { min-width: 0; }
   .section-title { align-items: start; flex-direction: column; gap: 8px; }

@@ -15,4 +15,7 @@ public class UserInfo {
     private Integer reviewCount;
     private Integer followingCount;
     private Integer followerCount;
+
+    /** 当前是否为有效 VIP。 */
+    private Boolean vip;
 }

@@ -248,6 +248,10 @@ export function getMyVip() {
   return request({ url: '/vips/me', method: 'get' })
 }
 
+export function getVipRecommendations() {
+  return request({ url: '/vips/recommendations', method: 'get' })
+}
+
 /** 创建支付订单；同一个 key 重试时由后端返回同一订单 */
 export function createPaymentOrder(productId, paymentMethod, idempotencyKey) {
   return request({

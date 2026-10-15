@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { getReviewDetail, likeReview, getRootComments, publishComment, deleteReview, updateReview } from '../api'
 import CommentItem from '../components/CommentItem.vue'
+import UserAvatar from '../components/UserAvatar.vue'
+import VipBadge from '../components/VipBadge.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
@@ -123,9 +125,9 @@ onMounted(() => { loadReview(); loadComments() })
       <article class="review-full">
         <header class="review-full-header">
           <div class="author-row" @click="router.push(`/users/${review.userId}`)">
-            <el-avatar :size="48" :src="review.avatar" />
+            <UserAvatar :size="48" :src="review.avatar" :vip="review.vip" />
             <div class="author-info">
-              <span class="author-name">{{ review.nickName || review.userName }}</span>
+              <span class="identity-line"><span class="author-name" :class="{ 'vip-name': review.vip }">{{ review.nickName || review.userName }}</span><VipBadge v-if="review.vip" /></span>
               <span class="author-date">{{ formatTime(review.createTime) }}</span>
             </div>
           </div>

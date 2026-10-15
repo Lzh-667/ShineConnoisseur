@@ -16,6 +16,7 @@ import com.lzh.repository.ReviewSearchRepository;
 import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IMovieService;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
@@ -63,6 +64,7 @@ class ReviewServiceImplTest {
     @Mock private ReviewMapper reviewMapper;
     @Mock private ElasticsearchOperations elasticsearchOperations;
     @Mock private ReviewSearchRepository reviewSearchRepository;
+    @Mock private VipIdentityService vipIdentityService;
 
     @Mock private QueryChainWrapper<Review> reviewQueryChain;
     @Mock private UpdateChainWrapper<Review> reviewUpdateChain;
@@ -80,6 +82,7 @@ class ReviewServiceImplTest {
     void setUp() {
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(vipIdentityService.activeUserIds(anyCollection())).thenReturn(Collections.emptySet());
 
         mockUser = new UserDTO();
         mockUser.setId(1L);

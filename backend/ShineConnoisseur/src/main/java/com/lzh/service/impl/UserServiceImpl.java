@@ -17,6 +17,7 @@ import com.lzh.dto.UserDTO;
 import com.lzh.mapper.UserMapper;
 import com.lzh.po.User;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.RegexUtils;
 import com.lzh.utils.SystemConstants;
@@ -41,6 +42,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private PasswordEncoder passwordEncoder;
+    @Resource
+    private VipIdentityService vipIdentityService;
     @Override
     public Result sendLoginCode(String phone) {
         //1.验证手机号
@@ -269,6 +272,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         UserInfo info = new UserInfo();
         BeanUtils.copyProperties(user,info);
+        info.setVip(vipIdentityService.isVip(user.getId()));
         return Result.ok(info);
     }
     @Override

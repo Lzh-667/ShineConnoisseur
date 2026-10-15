@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { getCurrentUser } from '../api'
 import { EditPen, Lock, Star, Document, ChatDotSquare, User, Avatar, Medal } from '@element-plus/icons-vue'
+import UserAvatar from '../components/UserAvatar.vue'
+import VipBadge from '../components/VipBadge.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -20,6 +22,7 @@ async function load() {
 }
 
 const menuItems = [
+  { label: 'VIP 专属推荐', path: '/vip/recommendations', icon: Star },
   { label: 'VIP 会员中心', path: '/vip', icon: Medal },
   { label: '编辑资料', path: '/profile/edit', icon: EditPen },
   { label: '修改密码', path: '/profile/password', icon: Lock },
@@ -38,9 +41,9 @@ onMounted(load)
     <div v-if="loading" class="loading-text">加载中...</div>
     <template v-else-if="userStore.userInfo">
       <div class="profile-header">
-        <el-avatar :size="80" :src="userStore.userInfo.avatar" class="profile-avatar" />
+        <UserAvatar :size="80" :src="userStore.userInfo.avatar" :vip="userStore.userInfo.vip" class="profile-avatar" />
         <div class="profile-info">
-          <h2>{{ userStore.userInfo.nickname || userStore.userInfo.username }}</h2>
+          <div class="identity-line"><h2 :class="{ 'vip-name': userStore.userInfo.vip }">{{ userStore.userInfo.nickname || userStore.userInfo.username }}</h2><VipBadge v-if="userStore.userInfo.vip" /></div>
           <p class="bio">{{ userStore.userInfo.bio || '这个人很懒，什么都没写' }}</p>
           <p class="username">@{{ userStore.userInfo.username }}</p>
         </div>

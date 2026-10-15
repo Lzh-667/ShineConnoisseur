@@ -11,4 +11,7 @@ public class UserDTO {
     private String nickname;
     private String avatar;
 
+    /** 当前是否为有效 VIP。 */
+    private Boolean vip;
+
 }

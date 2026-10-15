@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { getToken, setToken, removeToken } from '../../utils/auth'
-import { loginByPassword, loginByCode, getCurrentUser, getUserInfo, getUnreadCount, logout as logoutApi } from '../../api'
+import { loginByPassword, loginByCode, getCurrentUser, getUserInfo, getUnreadCount, getMyVip, logout as logoutApi } from '../../api'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -40,6 +40,14 @@ export const useUserStore = defineStore('user', {
         const res = await getUnreadCount()
         this.unreadCount = res.data ?? 0
       } catch { /* 静默失败 */ }
+    },
+
+    async refreshVipStatus() {
+      if (!this.isLoggedIn || !this.userInfo) return
+      try {
+        const res = await getMyVip()
+        this.userInfo.vip = res.data?.vip === true
+      } catch { /* 保留上一次服务端同步结果 */ }
     },
 
     decreaseUnread(n) {

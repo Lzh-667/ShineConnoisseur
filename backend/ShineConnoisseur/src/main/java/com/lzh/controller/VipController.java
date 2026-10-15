@@ -2,6 +2,7 @@ package com.lzh.controller;
 
 import com.lzh.common.Result;
 import com.lzh.service.VipService;
+import com.lzh.service.VipRecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -18,6 +19,14 @@ public class VipController {
 
     @Resource
     private VipService vipService;
+    @Resource
+    private VipRecommendationService recommendationService;
+
+    @GetMapping("/recommendations")
+    @Operation(summary = "VIP个性化电影推荐")
+    public Result recommendations() {
+        return recommendationService.recommend();
+    }
     @GetMapping("/products")
     @Operation(summary = "查询VIP套餐")
     public Result listProducts(){

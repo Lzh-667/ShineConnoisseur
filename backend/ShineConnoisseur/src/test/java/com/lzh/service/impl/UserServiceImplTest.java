@@ -12,6 +12,7 @@ import com.lzh.dto.UpdateProfileDTO;
 import com.lzh.dto.UserDTO;
 import com.lzh.mapper.UserMapper;
 import com.lzh.po.User;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.UserHolder;
 import org.junit.jupiter.api.AfterEach;
@@ -45,6 +46,7 @@ class UserServiceImplTest {
     @Mock private HashOperations<String, Object, Object> hashOperations;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private UserMapper userMapper;
+    @Mock private VipIdentityService vipIdentityService;
     @Mock private QueryChainWrapper<User> userQueryChain;
     @Mock private UpdateChainWrapper<User> userUpdateChain;
     @Mock private LambdaUpdateChainWrapper<User> userLambdaUpdateChain;

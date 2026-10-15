@@ -14,6 +14,7 @@ import com.lzh.po.User;
 import com.lzh.service.ILikeRecordService;
 import com.lzh.service.IReviewService;
 import com.lzh.service.IUserService;
+import com.lzh.service.VipIdentityService;
 import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
@@ -37,6 +38,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -53,6 +55,7 @@ class ReviewCommentServiceImplTest {
     @Mock private SetOperations<String, String> setOperations;
     @Mock private RabbitTemplate rabbitTemplate;
     @Mock private ReviewCommentMapper reviewCommentMapper;
+    @Mock private VipIdentityService vipIdentityService;
 
     @Mock private QueryChainWrapper<ReviewComment> commentQueryChain;
     @Mock private UpdateChainWrapper<Review> reviewUpdateChain;
@@ -68,6 +71,7 @@ class ReviewCommentServiceImplTest {
     @BeforeEach
     void setUp() {
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
+        when(vipIdentityService.activeUserIds(anyCollection())).thenReturn(Set.of());
 
         mockUser = new UserDTO();
         mockUser.setId(1L);

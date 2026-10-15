@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/modules/user'
 import { likeReview } from '../api'
 import { ElMessage } from 'element-plus'
+import UserAvatar from './UserAvatar.vue'
+import VipBadge from './VipBadge.vue'
 
 const props = defineProps({
   review: { type: Object, required: true },
@@ -84,9 +86,12 @@ function goToMovie(e) {
   <article class="review-card" @click="goToDetail">
     <header class="review-header">
       <div class="author" @click="goToUser">
-        <el-avatar :size="40" :src="review.avatar" />
+        <UserAvatar :size="40" :src="review.avatar" :vip="review.vip" />
         <div class="author-info">
-          <span class="author-name">{{ review.nickName || review.userName }}</span>
+          <span class="identity-line">
+            <span class="author-name" :class="{ 'vip-name': review.vip }">{{ review.nickName || review.userName }}</span>
+            <VipBadge v-if="review.vip" />
+          </span>
           <span class="review-time">{{ formatTime(review.createTime) }}</span>
         </div>
       </div>

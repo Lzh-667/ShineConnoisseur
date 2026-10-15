@@ -36,6 +36,9 @@ public class ReviewVO {
     /** 作者头像 */
     private String avatar;
 
+    /** 作者当前是否为有效 VIP。 */
+    private Boolean vip;
+
     /** 点赞数 */
     private Integer likeCount;
 
