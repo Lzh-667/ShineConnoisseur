@@ -18,7 +18,7 @@ class VipRecommendationServiceTest {
     private final MovieMapper movies = mock(MovieMapper.class);
     private final MovieFavoriteMapper favorites = mock(MovieFavoriteMapper.class);
     private final ReviewMapper reviews = mock(ReviewMapper.class);
-    private final VipRecommendationService service = new VipRecommendationService(identity, movies, favorites, reviews);
+    private final VipRecommendationService service = new com.lzh.service.impl.VipRecommendationServiceImpl(identity, movies, favorites, reviews);
 
     @BeforeAll
     static void metadata() {

@@ -1,4 +1,4 @@
-package com.lzh.service;
+package com.lzh.enums;
 
 public enum PaymentRefundResult {
     SUCCESS,

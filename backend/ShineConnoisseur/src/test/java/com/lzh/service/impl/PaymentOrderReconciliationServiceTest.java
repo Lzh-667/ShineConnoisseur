@@ -1,11 +1,15 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentFulfillmentService;
+import com.lzh.service.PaymentOrderStateService;
+import com.lzh.service.PaymentOrderReconciliationService;
+
 import com.lzh.common.BusinessException;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
 import com.lzh.service.AlipayService;
-import com.lzh.service.PaymentOrderQueryResult;
-import com.lzh.service.PaymentRefundResult;
+import com.lzh.dto.PaymentOrderQueryResult;
+import com.lzh.enums.PaymentRefundResult;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +40,7 @@ class PaymentOrderReconciliationServiceTest {
     @Mock
     private WechatPayService wechatPayService;
     @InjectMocks
-    private PaymentOrderReconciliationService reconciliationService;
+    private PaymentOrderReconciliationServiceImpl reconciliationService;
 
     private PaymentOrder order;
 

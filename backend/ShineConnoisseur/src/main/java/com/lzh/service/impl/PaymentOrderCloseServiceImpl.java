@@ -1,8 +1,12 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentOrderCloseService;
+import com.lzh.service.PaymentOrderStateService;
+import com.lzh.service.PaymentOrderReconciliationService;
+
 import com.lzh.po.PaymentOrder;
 import com.lzh.service.AlipayService;
-import com.lzh.service.PaymentCloseResult;
+import com.lzh.enums.PaymentCloseResult;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
@@ -16,19 +20,15 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentOrderCloseService {
+public class PaymentOrderCloseServiceImpl implements PaymentOrderCloseService {
 
-    public enum CloseOutcome {
-        CLOSED,
-        IN_PROGRESS,
-        STATE_CHANGED
-    }
 
     private final PaymentOrderStateService stateService;
     private final PaymentOrderReconciliationService reconciliationService;
     private final AlipayService alipayService;
     private final WechatPayService wechatPayService;
 
+    @Override
     public CloseOutcome requestClose(PaymentOrder order, boolean expired) {
         Integer status = order.getStatus();
         boolean claimedClose = false;

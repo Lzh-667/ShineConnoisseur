@@ -1,11 +1,15 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentFulfillmentService;
+import com.lzh.service.PaymentOrderStateService;
+import com.lzh.service.PaymentOrderReconciliationService;
+
 import com.lzh.common.BusinessException;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
 import com.lzh.service.AlipayService;
-import com.lzh.service.PaymentOrderQueryResult;
-import com.lzh.service.PaymentRefundResult;
+import com.lzh.dto.PaymentOrderQueryResult;
+import com.lzh.enums.PaymentRefundResult;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
@@ -21,16 +25,8 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentOrderReconciliationService {
+public class PaymentOrderReconciliationServiceImpl implements PaymentOrderReconciliationService {
 
-    public enum Outcome {
-        FULFILLED,
-        REFUNDED,
-        REMOTE_CLOSED,
-        UNPAID,
-        NOT_FOUND,
-        UNKNOWN
-    }
 
     private static final List<Integer> PENDING_STATUSES = List.of(
             SystemConstants.ORDER_STATUS_PAYING,
@@ -46,6 +42,7 @@ public class PaymentOrderReconciliationService {
     private final AlipayService alipayService;
     private final WechatPayService wechatPayService;
 
+    @Override
     public Outcome reconcile(PaymentOrder order) {
         if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUNDING)) {
             String refundRequestNo = refundRequestNo(order);

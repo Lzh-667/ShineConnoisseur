@@ -1,5 +1,7 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentFulfillmentService;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -24,12 +26,13 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentFulfillmentService {
+public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService {
 
     private final PaymentOrderMapper paymentOrderMapper;
     private final UserVipMapper userVipMapper;
 
     @Transactional(rollbackFor = Exception.class)
+    @Override
     public void fulfill(String orderNo,
                         Integer expectedPaymentMethod,
                         String transactionId,

@@ -1,5 +1,8 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentFulfillmentService;
+import com.lzh.service.PaymentOrderStateService;
+
 import cn.hutool.core.util.StrUtil;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
@@ -26,9 +29,9 @@ import com.lzh.config.AlipayConfig;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
 import com.lzh.service.AlipayService;
-import com.lzh.service.PaymentCloseResult;
-import com.lzh.service.PaymentOrderQueryResult;
-import com.lzh.service.PaymentRefundResult;
+import com.lzh.enums.PaymentCloseResult;
+import com.lzh.dto.PaymentOrderQueryResult;
+import com.lzh.enums.PaymentRefundResult;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import lombok.RequiredArgsConstructor;

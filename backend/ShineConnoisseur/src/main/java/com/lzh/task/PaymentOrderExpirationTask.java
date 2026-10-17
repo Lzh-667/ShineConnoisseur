@@ -3,7 +3,7 @@ package com.lzh.task;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
-import com.lzh.service.impl.PaymentOrderCloseService;
+import com.lzh.service.PaymentOrderCloseService;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

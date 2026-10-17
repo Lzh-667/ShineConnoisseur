@@ -1,5 +1,7 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentOrderStateService;
+
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
@@ -13,10 +15,11 @@ import java.time.LocalDateTime;
 /** 支付订单状态的原子迁移操作。 */
 @Service
 @RequiredArgsConstructor
-public class PaymentOrderStateService {
+public class PaymentOrderStateServiceImpl implements PaymentOrderStateService {
 
     private final PaymentOrderMapper paymentOrderMapper;
 
+    @Override
     public boolean transition(Long orderId, Integer fromStatus, Integer toStatus) {
         return paymentOrderMapper.update(
                 null,
@@ -27,6 +30,7 @@ public class PaymentOrderStateService {
         ) == 1;
     }
 
+    @Override
     public boolean completeInitiation(Long orderId, String paymentPayload) {
         return paymentOrderMapper.update(
                 null,
@@ -38,6 +42,7 @@ public class PaymentOrderStateService {
         ) == 1;
     }
 
+    @Override
     public boolean resetInitiation(Long orderId) {
         return transition(
                 orderId,
@@ -46,6 +51,7 @@ public class PaymentOrderStateService {
         );
     }
 
+    @Override
     public boolean transitionFromAny(Long orderId, List<Integer> sourceStatuses, Integer targetStatus) {
         return paymentOrderMapper.update(
                 null,
@@ -56,6 +62,7 @@ public class PaymentOrderStateService {
         ) == 1;
     }
 
+    @Override
     public boolean markRefunding(Long orderId, String transactionId) {
         return paymentOrderMapper.update(
                 null,
@@ -73,6 +80,7 @@ public class PaymentOrderStateService {
     }
 
     /** 记录本轮已处理时间，让批量任务在订单很多时能够公平轮询而不饿死后续订单。 */
+    @Override
     public void touch(Long orderId, Integer expectedStatus, LocalDateTime checkedAt) {
         paymentOrderMapper.update(
                 null,

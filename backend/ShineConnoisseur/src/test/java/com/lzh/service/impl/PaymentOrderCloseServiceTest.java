@@ -1,8 +1,12 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentOrderCloseService;
+import com.lzh.service.PaymentOrderStateService;
+import com.lzh.service.PaymentOrderReconciliationService;
+
 import com.lzh.po.PaymentOrder;
 import com.lzh.service.AlipayService;
-import com.lzh.service.PaymentCloseResult;
+import com.lzh.enums.PaymentCloseResult;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +35,7 @@ class PaymentOrderCloseServiceTest {
     @Mock
     private PaymentOrderReconciliationService reconciliationService;
     @InjectMocks
-    private PaymentOrderCloseService closeService;
+    private PaymentOrderCloseServiceImpl closeService;
 
     private PaymentOrder order;
 

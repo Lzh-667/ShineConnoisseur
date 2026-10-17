@@ -45,7 +45,7 @@ class VipIdentityServiceTest {
         UserVip activeVip = new UserVip();
         activeVip.setUserId(2L);
         when(userVipMapper.selectList(any())).thenReturn(List.of(activeVip));
-        VipIdentityService service = new VipIdentityService(userVipMapper);
+        VipIdentityService service = new com.lzh.service.impl.VipIdentityServiceImpl(userVipMapper);
 
         Set<Long> result = service.activeUserIds(Arrays.asList(null, 2L, 2L, 3L));
 
@@ -64,7 +64,7 @@ class VipIdentityServiceTest {
         UserVip activeVip = new UserVip();
         activeVip.setUserId(2L);
         when(userVipMapper.selectList(any())).thenReturn(List.of(activeVip));
-        VipIdentityService service = new VipIdentityService(userVipMapper);
+        VipIdentityService service = new com.lzh.service.impl.VipIdentityServiceImpl(userVipMapper);
         UserDTO vipUser = new UserDTO();
         vipUser.setId(2L);
         UserDTO normalUser = new UserDTO();
@@ -78,7 +78,7 @@ class VipIdentityServiceTest {
 
     @Test
     void isVip_withNullUserId_returnsFalseWithoutQuery() {
-        VipIdentityService service = new VipIdentityService(userVipMapper);
+        VipIdentityService service = new com.lzh.service.impl.VipIdentityServiceImpl(userVipMapper);
 
         assertFalse(service.isVip(null));
 

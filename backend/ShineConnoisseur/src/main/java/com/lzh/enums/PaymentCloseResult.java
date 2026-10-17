@@ -1,4 +1,4 @@
-package com.lzh.service;
+package com.lzh.enums;
 
 /** 支付渠道关单结果。 */
 public enum PaymentCloseResult {

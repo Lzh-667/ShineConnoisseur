@@ -1,4 +1,4 @@
-package com.lzh.service;
+package com.lzh.dto;
 
 import java.math.BigDecimal;
 

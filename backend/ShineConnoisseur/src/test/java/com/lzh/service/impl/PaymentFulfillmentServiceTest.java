@@ -35,7 +35,7 @@ class PaymentFulfillmentServiceTest {
     @Mock
     private UserVipMapper userVipMapper;
     @InjectMocks
-    private PaymentFulfillmentService paymentFulfillmentService;
+    private PaymentFulfillmentServiceImpl paymentFulfillmentService;
 
     private PaymentOrder order;
 

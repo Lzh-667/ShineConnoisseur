@@ -1,13 +1,16 @@
 package com.lzh.service.impl;
 
+import com.lzh.service.PaymentFulfillmentService;
+import com.lzh.service.PaymentOrderStateService;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lzh.common.Result;
 import com.lzh.config.WeChatPayConfig;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.po.PaymentOrder;
-import com.lzh.service.PaymentCloseResult;
-import com.lzh.service.PaymentOrderQueryResult;
-import com.lzh.service.PaymentRefundResult;
+import com.lzh.enums.PaymentCloseResult;
+import com.lzh.dto.PaymentOrderQueryResult;
+import com.lzh.enums.PaymentRefundResult;
 import com.lzh.service.WechatPayService;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;

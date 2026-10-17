@@ -1,5 +1,9 @@
 package com.lzh.service;
 
+import com.lzh.dto.PaymentOrderQueryResult;
+import com.lzh.enums.PaymentCloseResult;
+import com.lzh.enums.PaymentRefundResult;
+
 import com.lzh.common.Result;
 
 import java.math.BigDecimal;
