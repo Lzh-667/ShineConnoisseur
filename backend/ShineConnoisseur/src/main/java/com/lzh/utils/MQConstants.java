@@ -1,6 +1,7 @@
 package com.lzh.utils;
 
 public class MQConstants {
+    public static final String RETRY_HEADER = "x-message-retry-count";
     /** 消息交换机 */
     public static final String MESSAGE_EXCHANGE = "message.exchange";
     /** 消息队列 */

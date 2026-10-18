@@ -21,7 +21,6 @@ import com.lzh.mapper.ReviewMapper;
 import com.lzh.po.*;
 import com.lzh.repository.ReviewSearchRepository;
 import com.lzh.service.*;
-import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -29,7 +28,7 @@ import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.lzh.service.MessageOutboxService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
@@ -38,8 +37,6 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -62,7 +59,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     @Resource
     private StringRedisTemplate stringRedisTemplate;
     @Resource
-    private RabbitTemplate rabbitTemplate;
+    private MessageOutboxService outboxService;
     @Resource
     private ReviewCommentMapper reviewCommentMapper;
     @Resource
@@ -312,12 +309,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new BusinessException("更新点赞数量失败");
                 }
                 log.info("点赞成功");
-                // 增添缓存
-                stringRedisTemplate.opsForSet().add(key, userId.toString());
-                stringRedisTemplate.expire(key, RedisConstants.LIKE_REVIEW_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
                 Review review = getById(reviewId);
                 if(!Objects.equals(review.getUserId(), userId)){
-                    // 发送点赞消息（事务提交后）
+                    // 发送点赞消息（与业务同事务写入 Outbox）
                     Long reviewUserId = review.getUserId();
                     MessageDTO dto = new MessageDTO();
                     dto.setUserId(reviewUserId);
@@ -326,17 +320,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     dto.setTargetType(SystemConstants.MESSAGE_TARGET_REVIEW);
                     dto.setTargetId(reviewId);
                     dto.setContent("用户" + userService.getById(userId).getNickname() + "点赞了你的影评");
-                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            try {
-                                rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.like.review", dto);
-                            } catch (Exception e) {
-                                log.error("发送点赞影评消息失败: userId={}, reviewId={}", userId, reviewId, e);
-                            }
-                        }
-                    });
+                    outboxService.enqueue(dto, "message.like.review");
                 }
+                stringRedisTemplate.opsForSet().add(key, userId.toString());
+                stringRedisTemplate.expire(key, RedisConstants.LIKE_REVIEW_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
             }
             else{
                 log.info("点赞失败");

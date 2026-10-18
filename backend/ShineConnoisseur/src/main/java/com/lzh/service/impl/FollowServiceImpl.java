@@ -16,19 +16,15 @@ import com.lzh.po.UserFollow;
 import com.lzh.service.IFollowService;
 import com.lzh.service.IUserService;
 import com.lzh.service.VipIdentityService;
-import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.AmqpException;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.lzh.service.MessageOutboxService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.ZoneId;
 import java.util.*;
@@ -44,7 +40,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     @Resource
     private IUserService userService;
     @Resource
-    private RabbitTemplate rabbitTemplate;
+    private MessageOutboxService outboxService;
     @Resource
     private VipIdentityService vipIdentityService;
     @Override
@@ -200,13 +196,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                      throw new BusinessException("关注失败");
                 }
                 log.info("关注成功");
-                // 增添缓存
-                long now = System.currentTimeMillis();
-                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWER_KEY + id, userId.toString(), now);
-                stringRedisTemplate.expire(RedisConstants.FOLLOWER_KEY + id, RedisConstants.FOLLOWER_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
-                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWING_KEY + userId, id.toString(), now);
-                stringRedisTemplate.expire(RedisConstants.FOLLOWING_KEY + userId, RedisConstants.FOLLOWING_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
-                // 发送关注消息（事务提交后）
+                // 发送关注消息（与业务同事务写入 Outbox）
                 MessageDTO dto = new MessageDTO();
                 dto.setUserId(id);
                 dto.setFromUserId(userId);
@@ -214,16 +204,13 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 dto.setTargetType(SystemConstants.MESSAGE_TARGET_USER);
                 dto.setTargetId(userId);
                 dto.setContent("用户" + userService.getById(userId).getNickname() + "关注了你");
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.follow", dto);
-                        } catch (AmqpException e) {
-                            log.error("发送关注消息失败: userId={}, targetUserId={}", userId, id, e);
-                        }
-                    }
-                });
+                outboxService.enqueue(dto, "message.follow");
+                // Outbox 写入成功后再更新缓存，避免落库失败留下新的关注缓存。
+                long now = System.currentTimeMillis();
+                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWER_KEY + id, userId.toString(), now);
+                stringRedisTemplate.expire(RedisConstants.FOLLOWER_KEY + id, RedisConstants.FOLLOWER_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
+                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWING_KEY + userId, id.toString(), now);
+                stringRedisTemplate.expire(RedisConstants.FOLLOWING_KEY + userId, RedisConstants.FOLLOWING_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
             }
             else{
                 log.info("关注失败");

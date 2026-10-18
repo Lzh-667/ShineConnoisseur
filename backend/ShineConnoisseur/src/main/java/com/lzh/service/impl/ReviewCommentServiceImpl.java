@@ -20,7 +20,6 @@ import com.lzh.service.IReviewCommentService;
 import com.lzh.service.IReviewService;
 import com.lzh.service.IUserService;
 import com.lzh.service.VipIdentityService;
-import com.lzh.utils.MQConstants;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -29,13 +28,11 @@ import com.lzh.vo.LikeVO;
 import com.lzh.vo.ReviewCommentVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.lzh.service.MessageOutboxService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -55,7 +52,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     @Resource
     private StringRedisTemplate stringRedisTemplate;
     @Resource
-    private RabbitTemplate rabbitTemplate;
+    private MessageOutboxService outboxService;
     @Resource
     private VipIdentityService vipIdentityService;
 
@@ -110,7 +107,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 targetUserId = reviewCommentDTO.getReplyUserId();
             }
             if(!Objects.equals(targetUserId, userId)){
-                // 发送评论消息（事务提交后）
+                // 发送评论消息（与业务同事务写入 Outbox）
                 Long commentId = reviewComment.getId();
                 int msgType = reviewCommentDTO.getReplyUserId() == 0 ? SystemConstants.MESSAGE_TYPE_COMMENT : SystemConstants.MESSAGE_TYPE_REPLY_COMMENT;
                 MessageDTO dto = new MessageDTO();
@@ -122,16 +119,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 dto.setContent(reviewCommentDTO.getReplyUserId() == 0 ?
                         "用户" + userService.getById(userId).getNickname() + "评论了你的影评" :
                         "用户" + userService.getById(userId).getNickname() + "回复了你的评论");
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.comment", dto);
-                        } catch (Exception e) {
-                            log.error("发送评论消息失败: userId={}, commentId={}", userId, commentId, e);
-                        }
-                    }
-                });
+                outboxService.enqueue(dto, "message.comment");
             }
         }
         else{
@@ -344,12 +332,9 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new BusinessException("点赞失败");
                 }
                 log.info("点赞成功");
-                // 增添缓存
-                stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
-                stringRedisTemplate.expire(commentKey, RedisConstants.LIKE_COMMENT_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
                 ReviewComment reviewComment = getById(reviewCommentId);
                 if (!Objects.equals(reviewComment.getUserId(), userId)) {
-                    // 发送点赞消息（事务提交后）
+                    // 发送点赞消息（与业务同事务写入 Outbox）
                     Long commentUserId = reviewComment.getUserId();
                     MessageDTO dto = new MessageDTO();
                     dto.setUserId(commentUserId);
@@ -358,17 +343,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     dto.setTargetType(SystemConstants.MESSAGE_TARGET_COMMENT);
                     dto.setTargetId(reviewCommentId);
                     dto.setContent("用户" + userService.getById(userId).getNickname() + "点赞了你的评论");
-                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            try {
-                                rabbitTemplate.convertAndSend(MQConstants.MESSAGE_EXCHANGE, "message.like.comment", dto);
-                            } catch (Exception e) {
-                                log.error("发送点赞评论消息失败: userId={}, commentId={}", userId, reviewCommentId, e);
-                            }
-                        }
-                    });
+                    outboxService.enqueue(dto, "message.like.comment");
                 }
+                stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
+                stringRedisTemplate.expire(commentKey, RedisConstants.LIKE_COMMENT_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
             }
             else{
                 log.info("点赞失败");

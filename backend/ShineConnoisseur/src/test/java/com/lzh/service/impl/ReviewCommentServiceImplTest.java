@@ -30,7 +30,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.lzh.service.MessageOutboxService;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -53,7 +53,7 @@ class ReviewCommentServiceImplTest {
     @Mock private IUserService userService;
     @Mock private StringRedisTemplate stringRedisTemplate;
     @Mock private SetOperations<String, String> setOperations;
-    @Mock private RabbitTemplate rabbitTemplate;
+    @Mock private MessageOutboxService outboxService;
     @Mock private ReviewCommentMapper reviewCommentMapper;
     @Mock private VipIdentityService vipIdentityService;
 
@@ -163,7 +163,7 @@ class ReviewCommentServiceImplTest {
         var result = commentService.publishReviewComment(dto, 1L);
 
         assertTrue(result.getSuccess());
-        verify(rabbitTemplate).convertAndSend(eq(MQConstants.MESSAGE_EXCHANGE), anyString(), any(Object.class));
+        verify(outboxService).enqueue(any(com.lzh.dto.MessageDTO.class), anyString());
     }
 
     @Test

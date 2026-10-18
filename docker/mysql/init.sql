@@ -57,6 +57,39 @@ JOIN `message` older
 ALTER TABLE `message`
   ADD UNIQUE KEY `uk_biz_key` (`user_id`,`from_user_id`,`type`,`target_type`,`target_id`);
 
+CREATE TABLE IF NOT EXISTS `message_outbox` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'Outbox消息ID',
+  `payload` json NOT NULL COMMENT '待投递消息JSON',
+  `dedup_key` char(64) DEFAULT NULL COMMENT '重试和重放任务幂等键',
+  `routing_key` varchar(100) NOT NULL COMMENT 'RabbitMQ路由键',
+  `retry_count` int NOT NULL DEFAULT '0' COMMENT '消费端延迟重试次数',
+  `status` varchar(16) NOT NULL DEFAULT 'PENDING' COMMENT '投递状态：PENDING/SENT',
+  `attempts` int NOT NULL DEFAULT '0' COMMENT '发送到Broker的尝试次数',
+  `next_attempt_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '下次投递时间',
+  `lease_token` varchar(36) DEFAULT NULL COMMENT '多实例投递租约令牌',
+  `last_error` varchar(1000) DEFAULT NULL COMMENT '最近一次投递错误',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+  `sent_at` datetime(6) DEFAULT NULL COMMENT 'Broker确认时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_outbox_due` (`status`,`next_attempt_at`,`id`),
+  UNIQUE KEY `uk_outbox_dedup` (`dedup_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='RabbitMQ事务Outbox表';
+
+CREATE TABLE IF NOT EXISTS `message_failure` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `source_key` char(64) NOT NULL COMMENT '原投递幂等标识',
+  `source_queue` varchar(255) NOT NULL,
+  `message_id` varchar(255) DEFAULT NULL,
+  `body` longblob NOT NULL COMMENT '完整原始消息，兼容非法JSON',
+  `status` varchar(16) NOT NULL COMMENT 'READY/INVALID/REPLAYED',
+  `reason` varchar(1000) NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `replayed_at` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_failure_source` (`source_key`),
+  KEY `idx_failure_status` (`status`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息失败与隔离记录';
+
 CREATE TABLE IF NOT EXISTS `movie` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '电影ID',
   `title` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '电影名称',

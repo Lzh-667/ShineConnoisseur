@@ -32,7 +32,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.lzh.service.MessageOutboxService;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.redis.core.SetOperations;
@@ -59,7 +59,7 @@ class ReviewServiceImplTest {
     @Mock private IMovieService movieService;
     @Mock private IUserService userService;
     @Mock private ILikeRecordService likeRecordService;
-    @Mock private RabbitTemplate rabbitTemplate;
+    @Mock private MessageOutboxService outboxService;
     @Mock private ReviewCommentMapper reviewCommentMapper;
     @Mock private ReviewMapper reviewMapper;
     @Mock private ElasticsearchOperations elasticsearchOperations;
@@ -307,7 +307,7 @@ class ReviewServiceImplTest {
         var result = reviewService.likeReview(1L);
 
         assertTrue(result.getSuccess());
-        verify(rabbitTemplate).convertAndSend(eq(MQConstants.MESSAGE_EXCHANGE), anyString(), any(Object.class));
+        verify(outboxService).enqueue(any(com.lzh.dto.MessageDTO.class), anyString());
     }
 
     // ==================== updateReview ====================
@@ -468,6 +468,7 @@ class ReviewServiceImplTest {
         page.setRecords(Collections.emptyList());
         page.setTotal(0);
         when(reviewQueryChain.and(any())).thenReturn(reviewQueryChain);
+        when(reviewQueryChain.eq(anyBoolean(), anyString(), any())).thenReturn(reviewQueryChain);
         when(reviewQueryChain.like(anyString(), any())).thenReturn(reviewQueryChain);
         when(reviewQueryChain.page(any(Page.class))).thenReturn(page);
 
