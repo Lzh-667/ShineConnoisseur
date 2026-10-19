@@ -26,7 +26,7 @@ const reviewHasMore = ref(false)
 const isFav = ref(false)
 const favLoading = ref(false)
 
-// publish
+// 发布影评
 const showPublish = ref(false)
 const publishForm = reactive({ rating: null, title: '', content: '', spoiler: 0 })
 const publishLoading = ref(false)
@@ -147,7 +147,7 @@ onMounted(() => { loadMovie() })
         </div>
       </div>
 
-      <!-- publish dialog -->
+      <!-- 发布影评弹窗 -->
       <el-dialog v-model="showPublish" width="480px" :close-on-click-modal="false">
         <template #header>
           <div class="dialog-title">写影评</div>

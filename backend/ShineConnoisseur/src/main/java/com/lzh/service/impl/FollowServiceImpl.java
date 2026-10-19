@@ -16,6 +16,7 @@ import com.lzh.po.UserFollow;
 import com.lzh.service.IFollowService;
 import com.lzh.service.IUserService;
 import com.lzh.service.VipIdentityService;
+import com.lzh.service.CacheAfterCommitService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -43,6 +44,8 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     private MessageOutboxService outboxService;
     @Resource
     private VipIdentityService vipIdentityService;
+    @Resource
+    private CacheAfterCommitService cacheAfterCommit;
     @Override
     public Result getFollowerList(Integer current) {
         // 1. 获取当前用户ID
@@ -205,12 +208,10 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 dto.setTargetId(userId);
                 dto.setContent("用户" + userService.getById(userId).getNickname() + "关注了你");
                 outboxService.enqueue(dto, "message.follow");
-                // Outbox 写入成功后再更新缓存，避免落库失败留下新的关注缓存。
-                long now = System.currentTimeMillis();
-                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWER_KEY + id, userId.toString(), now);
-                stringRedisTemplate.expire(RedisConstants.FOLLOWER_KEY + id, RedisConstants.FOLLOWER_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
-                stringRedisTemplate.opsForZSet().add(RedisConstants.FOLLOWING_KEY + userId, id.toString(), now);
-                stringRedisTemplate.expire(RedisConstants.FOLLOWING_KEY + userId, RedisConstants.FOLLOWING_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
+                // 提交后删除双方列表缓存，下次读取时从已提交的数据库状态重建。
+                cacheAfterCommit.evict("关注关系变更",
+                        RedisConstants.FOLLOWER_KEY + id,
+                        RedisConstants.FOLLOWING_KEY + userId);
             }
             else{
                 log.info("关注失败");
@@ -237,9 +238,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                     throw new BusinessException("取关失败");
                 }
                 log.info("取关成功");
-                // 移除缓存
-                stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWER_KEY + id, userId.toString());
-                stringRedisTemplate.opsForZSet().remove(RedisConstants.FOLLOWING_KEY + userId, id.toString());
+                cacheAfterCommit.evict("关注关系变更",
+                        RedisConstants.FOLLOWER_KEY + id,
+                        RedisConstants.FOLLOWING_KEY + userId);
             }
             else{
                 log.info("取关失败");

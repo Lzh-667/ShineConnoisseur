@@ -16,13 +16,13 @@ public class MessageOutboxService {
     private final MessageOutboxMapper mapper;
     private final ObjectMapper objectMapper;
 
-    /** Must participate in the business transaction; failures must roll it back. */
+    /** 必须加入业务事务，写入失败时回滚整个业务事务。 */
     @Transactional(propagation = Propagation.MANDATORY)
     public void enqueue(MessageDTO dto, String routingKey) {
         persist(dto, routingKey, 0, 0, null);
     }
 
-    /** Commit the delayed retry before acknowledging the original delivery. */
+    /** 确认原消息前，先提交持久化的延迟重试任务。 */
     @Transactional
     public void retry(MessageDTO dto, int retryCount, String sourceKey) {
         if (retryCount < 1 || retryCount > 3) {

@@ -40,7 +40,7 @@ public class MessageFailureService {
     public List<MessageFailure> list(long afterId, int limit) { return mapper.list(afterId, limit); }
     public MessageFailure find(long id) { return mapper.find(id); }
 
-    /** Row lock, replay insertion and status update share the database transaction. */
+    /** 行锁、回放任务写入和状态更新处于同一个数据库事务中。 */
     @Transactional
     public boolean replay(long id, MessageDTO replacement) {
         MessageFailure failure = mapper.lock(id);

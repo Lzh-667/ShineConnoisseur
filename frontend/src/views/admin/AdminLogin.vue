@@ -82,7 +82,7 @@ async function handleLogin() {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Header */
+/* 标题区 */
 .card-header { text-align: center; margin-bottom: 36px; }
 .brand-mark {
   width: 56px; height: 56px; margin: 0 auto 16px;
@@ -93,10 +93,10 @@ async function handleLogin() {
 .brand-name { font-size: 24px; font-weight: 800; color: #f5af19; margin: 0 0 6px; letter-spacing: 1px; }
 .brand-sub { font-size: 13px; color: rgba(255,255,255,.25); margin: 0; }
 
-/* Form */
+/* 表单 */
 .login-form { display: flex; flex-direction: column; gap: 18px; }
 
-/* Inputs */
+/* 输入框 */
 .login-form :deep(.el-input__wrapper) {
   background: transparent !important;
   box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset !important;
@@ -120,7 +120,7 @@ async function handleLogin() {
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
-/* Button */
+/* 按钮 */
 .login-btn {
   width: 100%; height: 50px; margin-top: 8px;
   background: linear-gradient(135deg, #f5af19, #f12711);

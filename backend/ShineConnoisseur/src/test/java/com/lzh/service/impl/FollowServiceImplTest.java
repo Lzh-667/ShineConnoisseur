@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import com.lzh.service.MessageOutboxService;
+import com.lzh.service.CacheAfterCommitService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 
@@ -45,6 +46,7 @@ class FollowServiceImplTest {
     @Mock private ZSetOperations<String, String> zSetOperations;
     @Mock private IUserService userService;
     @Mock private MessageOutboxService outboxService;
+    @Mock private CacheAfterCommitService cacheAfterCommit;
     @Mock private VipIdentityService vipIdentityService;
 
     @Mock private QueryChainWrapper<UserFollow> followQueryChain;
@@ -84,7 +86,7 @@ class FollowServiceImplTest {
         userHolderMock.close();
     }
 
-    // ==================== follow ====================
+    // ==================== 关注与取关 ====================
 
     @Test
     void follow_self_returnsFail() {
@@ -142,7 +144,7 @@ class FollowServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== isFollow ====================
+    // ==================== 判断是否关注 ====================
 
     @Test
     void isFollow_redisHit_isFollowed_returnsTrue() {
@@ -186,7 +188,7 @@ class FollowServiceImplTest {
         assertTrue((Boolean) result.getData());
     }
 
-    // ==================== getFollowerList ====================
+    // ==================== 获取粉丝列表 ====================
 
     @Test
     void getFollowerList_redisHit_returnsList() {
@@ -210,7 +212,7 @@ class FollowServiceImplTest {
         page.setTotal(2);
         when(followQueryChain.page(any(Page.class))).thenReturn(page);
 
-        // the cache rebuild also calls .list()
+        // 重建缓存时也会调用 list()。
         when(followQueryChain.list()).thenReturn(List.of(buildUserFollow(1L, 2L), buildUserFollow(1L, 3L)));
 
         when(zSetOperations.add(anyString(), anyString(), anyDouble())).thenReturn(true);
@@ -222,7 +224,7 @@ class FollowServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== helpers ====================
+    // ==================== 辅助方法 ====================
 
     private User buildUser(Long id) {
         User user = new User();

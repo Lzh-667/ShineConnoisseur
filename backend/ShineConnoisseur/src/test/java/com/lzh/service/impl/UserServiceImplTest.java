@@ -69,17 +69,17 @@ class UserServiceImplTest {
         userHolderMock = mockStatic(UserHolder.class);
         userHolderMock.when(UserHolder::getUser).thenReturn(mockUser);
 
-        // query chain
+        // 查询调用链
         doReturn(userQueryChain).when(userService).query();
         when(userQueryChain.eq(any(), any())).thenReturn(userQueryChain);
 
-        // update chain
+        // 更新调用链
         doReturn(userUpdateChain).when(userService).update();
         when(userUpdateChain.setSql(anyString())).thenReturn(userUpdateChain);
         when(userUpdateChain.eq(any(), any())).thenReturn(userUpdateChain);
         when(userUpdateChain.gt(anyString(), anyInt())).thenReturn(userUpdateChain);
 
-        // lambda update chain
+        // Lambda 更新调用链
         doReturn(userLambdaUpdateChain).when(userService).lambdaUpdate();
         doReturn(userLambdaUpdateChain).when(userLambdaUpdateChain).eq(any(), any());
         doReturn(userLambdaUpdateChain).when(userLambdaUpdateChain).set(anyBoolean(), any(), any());
@@ -92,7 +92,7 @@ class UserServiceImplTest {
         userHolderMock.close();
     }
 
-    // ==================== sendLoginCode ====================
+    // ==================== 发送登录验证码 ====================
 
     @Test
     void sendLoginCode_invalidPhone_returnsFail() {
@@ -137,7 +137,7 @@ class UserServiceImplTest {
         verify(valueOperations).set(eq(codeKey), anyString(), eq(RedisConstants.LOGIN_CODE_TTL), eq(TimeUnit.MINUTES));
     }
 
-    // ==================== loginByCode ====================
+    // ==================== 验证码登录 ====================
 
     @Test
     void loginByCode_invalidPhone_returnsFail() {
@@ -205,7 +205,7 @@ class UserServiceImplTest {
         assertNotNull(result.getData());
     }
 
-    // ==================== loginByPassword ====================
+    // ==================== 密码登录 ====================
 
     @Test
     void loginByPassword_emptyUsername_returnsFail() {
@@ -223,7 +223,7 @@ class UserServiceImplTest {
     void loginByPassword_invalidPassword_returnsFail() {
         LoginFormDTO form = new LoginFormDTO();
         form.setUsername("testUser");
-        form.setPassword("123"); // too short
+        form.setPassword("123"); // 密码过短
 
         var result = userService.loginByPassword(form);
 
@@ -270,7 +270,7 @@ class UserServiceImplTest {
         assertNotNull(result.getData());
     }
 
-    // ==================== register ====================
+    // ==================== 用户注册 ====================
 
     @Test
     void register_passwordMismatch_returnsFail() {
@@ -286,7 +286,7 @@ class UserServiceImplTest {
     void register_usernameExists_returnsFail() {
         RegisterFormDTO form = buildRegisterForm("existingUser", "Pass123456", "Pass123456", "13800138001", null);
 
-        // first query for username
+        // 第一次查询用户名。
         when(userQueryChain.one()).thenReturn(buildUser(2L, "13800000000"));
 
         var result = userService.register(form);
@@ -298,7 +298,7 @@ class UserServiceImplTest {
     @Test
     void register_wrongCode_returnsFail() {
         RegisterFormDTO form = buildRegisterForm("newUser", "Pass123456", "Pass123456", "13800138001", null);
-        // username not exist, phone not exist
+        // 用户名和手机号均不存在。
         when(userQueryChain.one()).thenReturn(null).thenReturn(null);
         String codeKey = RedisConstants.REGISTER_CODE_KEY + "13800138001";
         when(valueOperations.get(codeKey)).thenReturn("654321");
@@ -313,7 +313,7 @@ class UserServiceImplTest {
     @Test
     void register_success_returnsToken() {
         RegisterFormDTO form = buildRegisterForm("newUser", "Pass123456", "Pass123456", "13800138001", null);
-        // username not exist, phone not exist
+        // 用户名和手机号均不存在。
         when(userQueryChain.one()).thenReturn(null).thenReturn(null);
         String codeKey = RedisConstants.REGISTER_CODE_KEY + "13800138001";
         when(valueOperations.get(codeKey)).thenReturn("123456");
@@ -329,7 +329,7 @@ class UserServiceImplTest {
         assertNotNull(result.getData());
     }
 
-    // ==================== updateProfile ====================
+    // ==================== 修改个人资料 ====================
 
     @Test
     void updateProfile_allEmpty_returnsFail() {
@@ -354,7 +354,7 @@ class UserServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== updatePassword ====================
+    // ==================== 修改密码 ====================
 
     @Test
     void updatePassword_wrongOldPassword_returnsFail() {
@@ -404,7 +404,7 @@ class UserServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== helpers ====================
+    // ==================== 辅助方法 ====================
 
     private User buildUser(Long id, String phone) {
         User user = new User();

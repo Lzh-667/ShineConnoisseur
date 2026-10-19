@@ -70,6 +70,8 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     private ReviewSearchRepository reviewSearchRepository;
     @Resource
     private VipIdentityService vipIdentityService;
+    @Resource
+    private CacheAfterCommitService cacheAfterCommit;
     @Transactional
     @Override
     public Result publishReview(ReviewDTO reviewDTO,Long movieId) {
@@ -110,9 +112,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                         .setSql("review_count = review_count + 1")
                         .eq("id", userId)
                         .update();
-                stringRedisTemplate.delete(
-                        RedisConstants.MOVIE_INFO_KEY + movieId
-                );
+                cacheAfterCommit.evict("恢复影评", RedisConstants.MOVIE_INFO_KEY + movieId);
                 syncReviewToES(exist);
                 return Result.ok();
             }
@@ -144,7 +144,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .eq("id", userId)
                 .update();
         // 5.删除缓存
-        stringRedisTemplate.delete(RedisConstants.MOVIE_INFO_KEY + movieId);
+        cacheAfterCommit.evict("发布影评", RedisConstants.MOVIE_INFO_KEY + movieId);
         // 6.同步ES
         syncReviewToES(review);
         return Result.ok();
@@ -267,8 +267,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new BusinessException("更新点赞数量失败");
                 }
                 log.info("取消点赞成功");
-                // 移除缓存
-                stringRedisTemplate.opsForSet().remove(key, userId.toString());
+                cacheAfterCommit.evict("影评点赞状态变更", key);
             }
             else{
                 log.info("取消点赞失败");
@@ -322,8 +321,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     dto.setContent("用户" + userService.getById(userId).getNickname() + "点赞了你的影评");
                     outboxService.enqueue(dto, "message.like.review");
                 }
-                stringRedisTemplate.opsForSet().add(key, userId.toString());
-                stringRedisTemplate.expire(key, RedisConstants.LIKE_REVIEW_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
+                cacheAfterCommit.evict("影评点赞状态变更", key);
             }
             else{
                 log.info("点赞失败");
@@ -398,7 +396,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 throw new BusinessException("更新电影总评分失败");
             }
             log.info("修改成功");
-            stringRedisTemplate.delete(RedisConstants.MOVIE_INFO_KEY + movieId);
+            cacheAfterCommit.evict("修改影评", RedisConstants.MOVIE_INFO_KEY + movieId);
             syncReviewToES(review);
             return Result.ok();
         }
@@ -441,7 +439,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             if(!success1||!success2){
                 throw new BusinessException("更新关联数据失败");
             }
-            // 删除点赞数据和缓存（可能没有点赞记录，不检查返回值）
+            // 删除点赞数据（可能没有点赞记录，不检查返回值）
             likeRecordService.remove(
                     new QueryWrapper<LikeRecord>()
                             .eq("target_id", reviewId)
@@ -451,6 +449,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             List<ReviewComment> comments = reviewCommentMapper.selectList(
                     new QueryWrapper<ReviewComment>().eq("review_id", reviewId)
             );
+            Set<String> cacheKeys = new HashSet<>();
             if (!comments.isEmpty()) {
                 Set<Long> commentIds = comments.stream()
                         .map(ReviewComment::getId)
@@ -460,9 +459,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                                 .in("target_id", commentIds)
                                 .eq("target_type", SystemConstants.TARGET_COMMENT)
                 );
-                commentIds.forEach(id ->
-                        stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id)
-                );
+                commentIds.forEach(id -> cacheKeys.add(RedisConstants.LIKE_COMMENT_KEY + id));
                 int deleted = reviewCommentMapper.delete(
                         new QueryWrapper<ReviewComment>().eq("review_id", reviewId)
                 );
@@ -470,9 +467,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     throw new BusinessException("级联删除评论失败");
                 }
             }
-            stringRedisTemplate.delete(RedisConstants.LIKE_REVIEW_KEY + reviewId);
-            stringRedisTemplate.opsForZSet().remove(RedisConstants.HOT_REVIEW_KEY,reviewId.toString());
-            stringRedisTemplate.delete(RedisConstants.MOVIE_INFO_KEY + movieId);
+            cacheKeys.add(RedisConstants.LIKE_REVIEW_KEY + reviewId);
+            cacheKeys.add(RedisConstants.HOT_REVIEW_KEY);
+            cacheKeys.add(RedisConstants.MOVIE_INFO_KEY + movieId);
+            cacheAfterCommit.evict("删除影评", cacheKeys.toArray(String[]::new));
             try { reviewSearchRepository.deleteById(reviewId); } catch (Exception e) { log.error("ES 删除影评文档失败: reviewId={}", reviewId, e); }
             log.info("删除成功");
             return Result.ok();

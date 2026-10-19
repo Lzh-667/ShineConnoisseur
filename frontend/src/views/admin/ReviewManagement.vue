@@ -156,7 +156,7 @@ onMounted(load)
 .review-excerpt { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rating { color: #f5af19; font-weight: 600; }
 
-/* ---- Detail dialog ---- */
+/* ---- 详情弹窗 ---- */
 .review-detail { display: flex; flex-direction: column; gap: 16px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .detail-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; background: rgba(255,255,255,.02); border-radius: 8px; }

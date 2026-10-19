@@ -1,4 +1,4 @@
--- Run against the configured application database before deploying the new backend.
+-- 部署新版后端前，在当前配置的应用数据库中执行本脚本。
 CREATE TABLE IF NOT EXISTS message_outbox (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     payload JSON NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS message_outbox (
     UNIQUE KEY uk_outbox_dedup (dedup_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Upgrade installations that already ran the first Outbox migration.
+-- 为已经执行过第一版 Outbox 迁移的数据库补齐新结构。
 SET @outbox_has_dedup = (SELECT COUNT(*) FROM information_schema.columns
     WHERE table_schema = DATABASE() AND table_name = 'message_outbox' AND column_name = 'dedup_key');
 SET @outbox_upgrade_sql = IF(@outbox_has_dedup > 0, 'SELECT 1',
@@ -46,9 +46,9 @@ CREATE TABLE IF NOT EXISTS message_failure (
     KEY idx_failure_status (status, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Existing installations may predate business-key deduplication.
--- If historical duplicates exist, ADD UNIQUE fails; review those rows before migration.
--- Never silently delete historical notifications in a migration.
+-- 较早的数据库可能尚未启用业务键去重。
+-- 如果存在历史重复数据，添加唯一索引会失败；迁移前应先人工核对这些记录。
+-- 迁移过程中不得静默删除历史通知。
 SET @message_unique_exists = (
     SELECT COUNT(*) FROM information_schema.statistics
     WHERE table_schema = DATABASE() AND table_name = 'message'

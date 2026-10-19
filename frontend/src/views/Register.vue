@@ -129,7 +129,7 @@ async function handleRegister() {
 </template>
 
 <style scoped>
-/* ========== Page ========== */
+/* ========== 页面 ========== */
 .auth-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
   background: #0d0d1a;
@@ -142,7 +142,7 @@ async function handleRegister() {
 .orb-1 { width: 500px; height: 500px; background: #f5af19; top: -150px; right: -150px; }
 .orb-2 { width: 400px; height: 400px; background: #f12711; bottom: -120px; left: -120px; }
 
-/* ========== Card ========== */
+/* ========== 卡片 ========== */
 .auth-card {
   position: relative; z-index: 1;
   width: 420px; padding: 40px 40px 32px;
@@ -153,13 +153,13 @@ async function handleRegister() {
   box-shadow: 0 8px 40px rgba(0,0,0,.4);
 }
 
-/* ========== Header ========== */
+/* ========== 标题区 ========== */
 .card-header { text-align: center; margin-bottom: 28px; }
 .header-icon { font-size: 36px; margin-bottom: 10px; }
 .header-title { font-size: 22px; font-weight: 800; color: #f5af19; margin: 0 0 4px; letter-spacing: 1px; }
 .header-desc { font-size: 13px; color: rgba(255,255,255,.35); margin: 0; }
 
-/* ========== Submit Button ========== */
+/* ========== 提交按钮 ========== */
 .submit-btn {
   width: 100%; height: 46px;
   background: linear-gradient(135deg, #f5af19, #f12711);
@@ -177,7 +177,7 @@ async function handleRegister() {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ========== Code Row ========== */
+/* ========== 验证码行 ========== */
 .code-row { display: flex; gap: 12px; }
 .code-btn {
   flex-shrink: 0; width: 110px; height: 40px;
@@ -187,7 +187,7 @@ async function handleRegister() {
 .code-btn:hover { background: rgba(245,175,25,.15); border-color: rgba(245,175,25,.35); }
 .code-btn:disabled { opacity: .4; }
 
-/* ========== Footer ========== */
+/* ========== 底部区域 ========== */
 .card-footer { text-align: center; color: rgba(255,255,255,.3); font-size: 13px; margin-top: 20px; }
 .card-footer a { color: #f5af19; text-decoration: none; font-weight: 500; margin-left: 4px; }
 .card-footer a:hover { color: #f7c04a; }
@@ -198,7 +198,7 @@ async function handleRegister() {
 </style>
 
 <style>
-/* ====== Input Fields ====== */
+/* ====== 输入字段 ====== */
 .auth-register-card .el-form-item {
   margin-bottom: 20px;
 }
@@ -228,11 +228,11 @@ async function handleRegister() {
   color: rgba(255,255,255,.22) !important;
   font-size: 14px !important;
 }
-/* Password visibility toggle */
+/* 密码可见性切换 */
 .auth-register-card .el-input__suffix { color: rgba(255,255,255,.25) !important; }
 .auth-register-card .el-input__suffix:hover { color: rgba(255,255,255,.5) !important; }
 
-/* ====== Autofill Override ====== */
+/* ====== 浏览器自动填充覆盖样式 ====== */
 .auth-register-card .el-input__inner:-webkit-autofill,
 .auth-register-card .el-input__inner:-webkit-autofill:hover,
 .auth-register-card .el-input__inner:-webkit-autofill:focus,
@@ -243,7 +243,7 @@ async function handleRegister() {
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
-/* ====== Error state ====== */
+/* ====== 错误状态 ====== */
 .auth-register-card .el-form-item.is-error .el-input__wrapper {
   border-color: rgba(245,108,108,.4) !important;
 }

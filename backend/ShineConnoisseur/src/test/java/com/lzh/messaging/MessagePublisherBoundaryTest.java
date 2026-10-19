@@ -16,7 +16,7 @@ import static org.mockito.Mockito.*;
 class MessagePublisherBoundaryTest {
     @Test void absentConfirmReallyTimesOutAndAbortsOnlyPublisherConnection() {
         var fixture = new Fixture();
-        // Leave the confirmation future incomplete, rather than injecting a TimeoutException.
+        // 保持确认结果未完成，以真实等待超时，而不是直接注入超时异常。
         assertTimeoutPreemptively(Duration.ofSeconds(10), () ->
                 assertThrows(AmqpException.class, () -> fixture.publisher.publish("message.test",
                         MessageReliabilityTest.raw(0), "attempt")));
@@ -52,6 +52,22 @@ class MessagePublisherBoundaryTest {
         verify(fixture.publisherFactory).resetConnection();
     }
 
+    @Test void closedBlockedConnectionDoesNotPreventRecovery() throws Exception {
+        var fixture = new Fixture();
+        fixture.blocked.handleBlocked("disk alarm");
+        when(fixture.nativeConnection.isOpen()).thenReturn(false);
+        fixture.connectionListener.onClose(fixture.springConnection);
+        doAnswer(invocation -> {
+            CorrelationData cd = invocation.getArgument(3);
+            cd.getFuture().complete(new CorrelationData.Confirm(true, null));
+            return null;
+        }).when(fixture.template).send(anyString(), anyString(), any(Message.class), any(CorrelationData.class));
+
+        assertDoesNotThrow(() -> fixture.publisher.publish("message.test",
+                MessageReliabilityTest.raw(0), "recovered-attempt"));
+        verify(fixture.template).send(anyString(), anyString(), any(Message.class), any(CorrelationData.class));
+    }
+
     private static class Fixture {
         final RabbitTemplate template = mock(RabbitTemplate.class);
         final CachingConnectionFactory consumerFactory = mock(CachingConnectionFactory.class);
@@ -59,14 +75,17 @@ class MessagePublisherBoundaryTest {
         final com.rabbitmq.client.Connection nativeConnection = mock(com.rabbitmq.client.Connection.class);
         final ConfirmedMessagePublisher publisher;
         final BlockedListener blocked;
+        final ConnectionListener connectionListener;
+        final Connection springConnection = mock(Connection.class);
         Fixture() {
             when(consumerFactory.getPublisherConnectionFactory()).thenReturn(publisherFactory);
             publisher = new ConfirmedMessagePublisher(template, consumerFactory);
             var listener = ArgumentCaptor.forClass(ConnectionListener.class);
             verify(publisherFactory).addConnectionListener(listener.capture());
-            Connection springConnection = mock(Connection.class);
             when(springConnection.getDelegate()).thenReturn(nativeConnection);
-            listener.getValue().onCreate(springConnection);
+            when(nativeConnection.isOpen()).thenReturn(true);
+            connectionListener = listener.getValue();
+            connectionListener.onCreate(springConnection);
             var blockedListener = ArgumentCaptor.forClass(BlockedListener.class);
             verify(nativeConnection).addBlockedListener(blockedListener.capture());
             blocked = blockedListener.getValue();

@@ -14,7 +14,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 // ============ 状态 ============
-const messages = ref([]) // { role, content, tools[], sources[], error }
+const messages = ref([]) // 消息结构：角色、正文、工具调用、引用来源和错误信息。
 const currentThreadId = ref(null)
 const input = ref('')
 const streaming = ref(false)
@@ -554,7 +554,7 @@ onMounted(() => {
 }
 .msg-text { color: var(--text-primary); white-space: pre-wrap; word-break: break-word; }
 
-/* typing 动画 */
+/* 输入中动画 */
 .typing { display: inline-flex; gap: 4px; padding: 4px 0; }
 .typing span {
   width: 6px; height: 6px; border-radius: 50%;
@@ -564,7 +564,7 @@ onMounted(() => {
 .typing span:nth-child(3) { animation-delay: .4s; }
 @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
 
-/* markdown 正文 */
+/* Markdown 正文 */
 .md-body { color: var(--text-primary); word-break: break-word; }
 .md-body :deep(p) { margin: 0 0 10px; }
 .md-body :deep(h1), .md-body :deep(h2), .md-body :deep(h3), .md-body :deep(h4) {

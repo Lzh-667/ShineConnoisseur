@@ -142,7 +142,7 @@ onMounted(load)
 
 .comment-content { font-size: 14px; color: rgba(255,255,255,.65); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 
-/* ---- Detail dialog ---- */
+/* ---- 详情弹窗 ---- */
 .comment-detail { display: flex; flex-direction: column; gap: 16px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .detail-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; background: rgba(255,255,255,.02); border-radius: 8px; }

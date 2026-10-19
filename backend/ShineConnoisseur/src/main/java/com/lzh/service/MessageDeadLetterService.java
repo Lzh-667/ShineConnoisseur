@@ -10,6 +10,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Qualifier;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -29,7 +30,7 @@ public class MessageDeadLetterService {
 
     public record ReplayResult(int replayed, int quarantined, boolean stoppedOnFailure) {}
 
-    /** Manual basicGet: acknowledge only after a durable outbox transaction has committed. */
+    /** 手动拉取死信，仅在持久化 Outbox 事务提交后确认原消息。 */
     public ReplayResult replay(int limit) {
         if (limit < 1 || limit > 100) throw new IllegalArgumentException("limit 必须在 1 到 100 之间");
         int databaseReplayed = 0;
@@ -52,37 +53,45 @@ public class MessageDeadLetterService {
         final int invalid = databaseInvalid;
         final int processed = databaseProcessed;
         if (processed >= limit) return new ReplayResult(restored, invalid, false);
-        return rabbitTemplate.execute(channel -> {
-            int replayed = restored;
-            int quarantined = invalid;
-            for (int attempted = processed; attempted < limit; attempted++) {
-                GetResponse response = channel.basicGet(MQConstants.MESSAGE_DLX_QUEUE, false);
-                if (response == null) break;
-                long tag = response.getEnvelope().getDeliveryTag();
-                try {
-                    MessageDTO dto;
+        AtomicInteger replayedCount = new AtomicInteger(restored);
+        AtomicInteger quarantinedCount = new AtomicInteger(invalid);
+        try {
+            ReplayResult result = rabbitTemplate.execute(channel -> {
+                for (int attempted = processed; attempted < limit; attempted++) {
+                    GetResponse response = channel.basicGet(MQConstants.MESSAGE_DLX_QUEUE, false);
+                    if (response == null) break;
+                    long tag = response.getEnvelope().getDeliveryTag();
                     try {
-                        dto = objectMapper.readValue(response.getBody(), MessageDTO.class);
-                        MessageOutboxService.validate(dto);
-                    } catch (IOException | IllegalArgumentException malformed) {
-                        failures.capture(response.getProps().getMessageId(), response.getBody(),
-                                MQConstants.MESSAGE_DLX_QUEUE, true, malformed.toString());
-                        channel.basicAck(tag, false);
-                        quarantined++;
-                        continue;
+                        MessageDTO dto;
+                        try {
+                            dto = objectMapper.readValue(response.getBody(), MessageDTO.class);
+                            MessageOutboxService.validate(dto);
+                        } catch (IOException | IllegalArgumentException malformed) {
+                            failures.capture(response.getProps().getMessageId(), response.getBody(),
+                                    MQConstants.MESSAGE_DLX_QUEUE, true, malformed.toString());
+                            quarantinedCount.incrementAndGet();
+                            channel.basicAck(tag, false);
+                            continue;
+                        }
+                        outboxService.replay(dto, "broker:" + MessageIdentity.delivery(
+                                response.getProps().getMessageId(), response.getBody()));
+                        replayedCount.incrementAndGet();
+                    } catch (RuntimeException e) {
+                        channel.basicNack(tag, false, true);
+                        log.error("死信重放失败，原消息保留在队列中", e);
+                        return new ReplayResult(replayedCount.get(), quarantinedCount.get(), true);
                     }
-                    outboxService.replay(dto, "broker:" + MessageIdentity.delivery(
-                            response.getProps().getMessageId(), response.getBody()));
-                } catch (RuntimeException e) {
-                    channel.basicNack(tag, false, true);
-                    log.error("死信重放失败，原消息保留在队列中", e);
-                    return new ReplayResult(replayed, quarantined, true);
+                    channel.basicAck(tag, false);
                 }
-                channel.basicAck(tag, false);
-                replayed++;
-            }
-            log.info("管理员重放死信消息: count={}", replayed);
-            return new ReplayResult(replayed, quarantined, false);
-        });
+                log.info("管理员重放死信消息: count={}", replayedCount.get());
+                return new ReplayResult(replayedCount.get(), quarantinedCount.get(), false);
+            });
+            return result == null
+                    ? new ReplayResult(replayedCount.get(), quarantinedCount.get(), true)
+                    : result;
+        } catch (RuntimeException e) {
+            log.error("RabbitMQ 死信队列不可用，本批已完成的回放结果已保留", e);
+            return new ReplayResult(replayedCount.get(), quarantinedCount.get(), true);
+        }
     }
 }

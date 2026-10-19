@@ -31,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import com.lzh.service.MessageOutboxService;
+import com.lzh.service.CacheAfterCommitService;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -54,6 +55,7 @@ class ReviewCommentServiceImplTest {
     @Mock private StringRedisTemplate stringRedisTemplate;
     @Mock private SetOperations<String, String> setOperations;
     @Mock private MessageOutboxService outboxService;
+    @Mock private CacheAfterCommitService cacheAfterCommit;
     @Mock private ReviewCommentMapper reviewCommentMapper;
     @Mock private VipIdentityService vipIdentityService;
 
@@ -79,7 +81,7 @@ class ReviewCommentServiceImplTest {
         userHolderMock = mockStatic(UserHolder.class);
         userHolderMock.when(UserHolder::getUser).thenReturn(mockUser);
 
-        // comment query chain
+        // 评论查询调用链
         doReturn(commentQueryChain).when(commentService).query();
         when(commentQueryChain.eq(anyString(), any())).thenReturn(commentQueryChain);
         when(commentQueryChain.ne(anyString(), any())).thenReturn(commentQueryChain);
@@ -89,27 +91,27 @@ class ReviewCommentServiceImplTest {
         when(commentQueryChain.list()).thenReturn(Collections.emptyList());
         when(commentQueryChain.one()).thenReturn(null);
 
-        // comment update chain
+        // 评论更新调用链
         doReturn(commentUpdateChain).when(commentService).update();
         when(commentUpdateChain.setSql(anyString())).thenReturn(commentUpdateChain);
         when(commentUpdateChain.eq(anyString(), any())).thenReturn(commentUpdateChain);
         when(commentUpdateChain.gt(anyString(), anyInt())).thenReturn(commentUpdateChain);
         when(commentUpdateChain.update()).thenReturn(true);
 
-        // reviewService.update() chain
+        // 影评服务更新调用链
         when(reviewService.update()).thenReturn(reviewUpdateChain);
         when(reviewUpdateChain.setSql(anyString())).thenReturn(reviewUpdateChain);
         when(reviewUpdateChain.eq(any(), any())).thenReturn(reviewUpdateChain);
         when(reviewUpdateChain.gt(anyString(), anyInt())).thenReturn(reviewUpdateChain);
         when(reviewUpdateChain.update()).thenReturn(true);
 
-        // likeRecordService
+        // 点赞记录服务
         when(likeRecordService.query()).thenReturn(likeRecordQueryChain);
         when(likeRecordQueryChain.eq(anyString(), any())).thenReturn(likeRecordQueryChain);
         when(likeRecordQueryChain.in(anyString(), anySet())).thenReturn(likeRecordQueryChain);
         when(likeRecordQueryChain.list()).thenReturn(Collections.emptyList());
 
-        // mapper stubs
+        // 数据访问层桩对象
         when(reviewCommentMapper.selectMaps(any(QueryWrapper.class))).thenReturn(Collections.emptyList());
         doReturn(reviewCommentMapper).when(commentService).getBaseMapper();
     }
@@ -119,7 +121,7 @@ class ReviewCommentServiceImplTest {
         userHolderMock.close();
     }
 
-    // ==================== publishReviewComment ====================
+    // ==================== 发布影评评论 ====================
 
     @Test
     void publishReviewComment_rootComment_success() {
@@ -155,8 +157,8 @@ class ReviewCommentServiceImplTest {
         doReturn(true).when(commentService).save(any(ReviewComment.class));
         Review review = buildReview(2L);
         when(reviewService.getById(1L)).thenReturn(review);
-        User author1 = buildUser(1L); // current user
-        User author2 = buildUser(2L); // reply target
+        User author1 = buildUser(1L); // 当前用户
+        User author2 = buildUser(2L); // 回复目标用户
         when(userService.getById(1L)).thenReturn(author1);
         when(userService.getById(2L)).thenReturn(author2);
 
@@ -181,7 +183,7 @@ class ReviewCommentServiceImplTest {
         assertEquals("评论不存在", result.getErrorMsg());
     }
 
-    // ==================== likeReviewComment ====================
+    // ==================== 点赞影评评论 ====================
 
     @Test
     void likeReviewComment_commentNotFound_returnsFail() {
@@ -232,11 +234,11 @@ class ReviewCommentServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== deleteReviewComment ====================
+    // ==================== 删除影评评论 ====================
 
     @Test
     void deleteReviewComment_notOwner_returnsFail() {
-        ReviewComment comment = buildComment(1L, 2L, 1L, 0L); // userId=2 ≠ current=1
+        ReviewComment comment = buildComment(1L, 2L, 1L, 0L); // 评论用户为 2，当前用户为 1。
         doReturn(comment).when(commentService).getById(1L);
 
         var result = commentService.deleteReviewComment(1L);
@@ -247,7 +249,7 @@ class ReviewCommentServiceImplTest {
     @Test
     void deleteReviewComment_leafComment_success() {
         ReviewComment comment = buildComment(1L, 1L, 1L, 0L);
-        comment.setReplyUserId(2L); // not root (replyUserId != 0) → leaf reply
+        comment.setReplyUserId(2L); // 回复用户不为 0，表示叶子回复而非根评论。
         doReturn(comment).when(commentService).getById(1L);
         doReturn(true).when(commentService).removeById(1L);
         doReturn(true).when(likeRecordService).remove(any(QueryWrapper.class));
@@ -261,7 +263,7 @@ class ReviewCommentServiceImplTest {
     @Test
     void deleteReviewComment_rootComment_cascadesChildren() {
         ReviewComment rootComment = buildComment(1L, 1L, 1L, 0L);
-        rootComment.setReplyUserId(0L); // root comment
+        rootComment.setReplyUserId(0L); // 根评论
         doReturn(rootComment).when(commentService).getById(1L);
         doReturn(true).when(commentService).removeById(1L);
         doReturn(true).when(likeRecordService).remove(any(QueryWrapper.class));
@@ -277,7 +279,7 @@ class ReviewCommentServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== helpers ====================
+    // ==================== 辅助方法 ====================
 
     private ReviewComment buildComment(Long id, Long userId, Long reviewId, Long rootId) {
         ReviewComment comment = new ReviewComment();

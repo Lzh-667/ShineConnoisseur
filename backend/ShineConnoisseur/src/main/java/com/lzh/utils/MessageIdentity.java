@@ -5,7 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-/** Delivery identity is independent of notification business deduplication. */
+/** 投递标识与通知业务去重相互独立。 */
 public final class MessageIdentity {
     private MessageIdentity() {}
 

@@ -200,7 +200,7 @@ function onPageChange(p) {
   50% { transform: translate(-50%, -50%) scale(1.3); }
 }
 
-/* ===== Hero ===== */
+/* ===== 主视觉区域 ===== */
 .search-hero {
   position: relative; z-index: 1;
   text-align: center;
@@ -252,7 +252,7 @@ function onPageChange(p) {
   animation: titleIn .6s ease-out .15s both;
 }
 
-/* ===== Search Box ===== */
+/* ===== 搜索框 ===== */
 .search-box {
   position: relative; z-index: 1;
   max-width: 560px; margin: 0 auto;
@@ -306,7 +306,7 @@ function onPageChange(p) {
 .search-btn:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,175,25,.25); }
 .search-btn:active { transform: scale(.97); }
 
-/* Dark input overrides */
+/* 深色输入框覆盖样式 */
 .search-box :deep(.el-input__wrapper) {
   background: rgba(255,255,255,.03) !important;
   box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset !important;
@@ -325,7 +325,7 @@ function onPageChange(p) {
 .search-box :deep(.el-input__inner) { color: rgba(255,255,255,.75) !important; font-size: 15px !important; }
 .search-box :deep(.el-input__inner::placeholder) { color: rgba(255,255,255,.2) !important; }
 
-/* ===== Results ===== */
+/* ===== 搜索结果 ===== */
 .search-results {
   position: relative; z-index: 1;
   margin-top: 20px;
@@ -361,7 +361,7 @@ function onPageChange(p) {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Loading state */
+/* 加载状态 */
 .loading-state {
   text-align: center; padding: 80px 0; color: rgba(255,255,255,.3);
 }
@@ -375,7 +375,7 @@ function onPageChange(p) {
 
 .loading-state p { font-size: 14px; margin: 0; }
 
-/* Empty state */
+/* 空结果状态 */
 .empty-result { text-align: center; padding: 80px 0; color: rgba(255,255,255,.3); }
 .empty-visual {
   display: inline-flex; align-items: center; justify-content: center;
@@ -388,7 +388,7 @@ function onPageChange(p) {
 
 .pager { margin-top: 28px; justify-content: center; }
 
-/* ===== Pagination dark overrides ===== */
+/* ===== 分页器深色覆盖样式 ===== */
 :deep(.el-pagination.is-background .btn-prev),
 :deep(.el-pagination.is-background .btn-next),
 :deep(.el-pagination.is-background .el-pager li) {

@@ -72,7 +72,7 @@ class MovieServiceImplTest {
         userHolderMock = mockStatic(UserHolder.class);
         userHolderMock.when(UserHolder::getUser).thenReturn(mockUser);
 
-        // query chain
+        // 查询调用链
         doReturn(movieQueryChain).when(movieService).query();
         when(movieQueryChain.eq(any(), any())).thenReturn(movieQueryChain);
         when(movieQueryChain.like(anyBoolean(), any(), any())).thenReturn(movieQueryChain);
@@ -91,7 +91,7 @@ class MovieServiceImplTest {
         userHolderMock.close();
     }
 
-    // ==================== getMovieInfo ====================
+    // ==================== 获取电影信息 ====================
 
     @Test
     void getMovieInfo_cacheHit_returnsMovie() {
@@ -157,7 +157,7 @@ class MovieServiceImplTest {
         assertEquals("电影不存在", result.getErrorMsg());
     }
 
-    // ==================== searchMovies ====================
+    // ==================== 搜索电影 ====================
 
     @Test
     void searchMovies_allFiltersEmpty_returnsEmptyPage() {
@@ -183,7 +183,7 @@ class MovieServiceImplTest {
         verify(movieQueryChain).like(true, "title", "肖申克");
     }
 
-    // ==================== listHotMovies ====================
+    // ==================== 查询热门电影 ====================
 
     @Test
     void listHotMovies_normal_returnsMovies() {
@@ -211,7 +211,7 @@ class MovieServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== isFavorite ====================
+    // ==================== 判断是否收藏 ====================
 
     @Test
     void isFavorite_redisHit_isFavorite_returnsTrue() {
@@ -253,7 +253,7 @@ class MovieServiceImplTest {
         assertTrue((Boolean) result.getData());
     }
 
-    // ==================== favoriteMovie ====================
+    // ==================== 收藏与取消收藏 ====================
 
     @Test
     void favoriteMovie_addFavorite_success() {
@@ -301,7 +301,7 @@ class MovieServiceImplTest {
         verify(movieFavoriteService).remove(any(QueryWrapper.class));
     }
 
-    // ==================== listFavoriteMovies ====================
+    // ==================== 查询收藏电影 ====================
 
     @Test
     void listFavoriteMovies_redisHit_returnsMovies() {
@@ -319,7 +319,7 @@ class MovieServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== helpers ====================
+    // ==================== 辅助方法 ====================
 
     private Movie buildMovie(Long id, String title, Integer status) {
         Movie movie = new Movie();

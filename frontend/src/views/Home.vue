@@ -69,7 +69,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- guest hero -->
+  <!-- 游客引导区 -->
   <div v-if="!userStore.isLoggedIn" class="home-guest">
     <div class="guest-hero">
       <div class="hero-bg"></div>
@@ -92,7 +92,7 @@ onUnmounted(() => {
     </div>
   </div>
 
-  <!-- review feed (everyone) -->
+  <!-- 所有人可见的影评信息流 -->
   <div class="home-feed">
     <div class="feed-header">
       <h2 class="feed-title">热门影评</h2>
@@ -129,7 +129,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* ===== Feed ===== */
+/* ===== 信息流 ===== */
 .home-feed { max-width: 680px; margin: 0 auto; padding: 44px 24px 80px; }
 
 .feed-header { text-align: center; margin-bottom: 44px; }
@@ -155,7 +155,7 @@ onUnmounted(() => {
 
 .load-more, .load-end { text-align: center; padding: 24px; color: rgba(255,255,255,.2); font-size: 13px; }
 
-/* ===== Guest ===== */
+/* ===== 游客区域 ===== */
 .home-guest { text-align: center; }
 
 .guest-hero {

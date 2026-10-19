@@ -29,7 +29,7 @@ public class MessageConsumer {
         try {
             consume(raw);
         } catch (RuntimeException e) {
-            // Advice backs off before requeueing. No durable successor means no ACK or DLX handoff.
+            // 重试拦截器会在重新入队前退避；没有持久化后继记录时，不能确认消息或转交死信交换机。
             throw new ImmediateRequeueAmqpException("消息处理/隔离记录未持久化，保留原消息", e);
         }
     }

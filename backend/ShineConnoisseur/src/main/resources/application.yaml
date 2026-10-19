@@ -73,7 +73,7 @@ alipay:
   alipay-public-key: ${ALIPAY_PUBLIC_KEY:}
   # 支付宝沙箱网关
   gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
-  # RSA2
+  # 支付宝 RSA2 签名算法
   sign-type: RSA2
   # 编码
   charset: UTF-8

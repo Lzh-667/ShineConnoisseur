@@ -67,7 +67,7 @@ async function handleSubmit() {
 
 .form-box { display: flex; flex-direction: column; gap: 4px; }
 
-/* Dark inputs */
+/* 深色输入框 */
 .form-box :deep(.el-input__wrapper) {
   background: transparent !important;
   box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset !important;

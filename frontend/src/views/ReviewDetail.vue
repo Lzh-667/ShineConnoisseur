@@ -121,7 +121,7 @@ onMounted(() => { loadReview(); loadComments() })
     <div v-else-if="notFound" class="empty">影评不存在或已删除</div>
 
     <template v-else-if="review">
-      <!-- review header -->
+      <!-- 影评标题区 -->
       <article class="review-full">
         <header class="review-full-header">
           <div class="author-row" @click="router.push(`/users/${review.userId}`)">
@@ -177,14 +177,14 @@ onMounted(() => { loadReview(); loadComments() })
         </div>
       </el-dialog>
 
-      <!-- comment input -->
+      <!-- 评论输入区 -->
       <div v-if="userStore.isLoggedIn" class="comment-input-area">
         <el-input v-model="newComment" placeholder="写下你的评论..." type="textarea" :rows="3" resize="none" />
         <el-button class="publish-btn" type="primary" :loading="commentSending" :disabled="!newComment.trim()" @click="handlePublish">发布评论</el-button>
       </div>
       <div v-else class="login-hint">请先<a @click="router.push({ name: 'Login', query: { redirect: route.fullPath } })">登录</a>后评论</div>
 
-      <!-- comments -->
+      <!-- 评论列表 -->
       <div v-if="commentLoading && comments.length === 0" class="loading-text">加载评论中...</div>
       <div v-else-if="comments.length === 0" class="empty-comments">暂无评论，来写第一条吧</div>
       <div v-else class="comments-section">
@@ -198,7 +198,7 @@ onMounted(() => { loadReview(); loadComments() })
 <style scoped>
 .review-detail-page { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
 
-/* full review */
+/* 完整影评 */
 .review-full { background: rgba(255,255,255,.03); border-radius: 12px; padding: 32px; margin-bottom: 32px; }
 .review-full-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 
@@ -236,7 +236,7 @@ onMounted(() => { loadReview(); loadComments() })
 .action-btn.active { color: #f56c6c; }
 .action-info { font-size: 14px; color: rgba(255,255,255,.35); align-self: center; }
 
-/* comment input */
+/* 评论输入区 */
 .comment-input-area { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-bottom: 40px; }
 .comment-input-area :deep(.el-textarea) { width: 100%; }
 .comment-input-area :deep(.el-textarea__inner) {
@@ -256,7 +256,7 @@ onMounted(() => { loadReview(); loadComments() })
 .login-hint { text-align: center; padding: 24px; color: rgba(255,255,255,.3); font-size: 14px; }
 .login-hint a { color: #409eff; cursor: pointer; }
 
-/* comments */
+/* 评论列表 */
 .comments-section { margin-bottom: 24px; }
 .loading-text, .empty, .empty-comments { text-align: center; padding: 60px 0; color: rgba(255,255,255,.3); }
 .pager { justify-content: center; margin-top: 24px; }

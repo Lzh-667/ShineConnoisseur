@@ -38,7 +38,7 @@ public class MessageOutboxTask {
                         new Message(row.getPayload().getBytes(StandardCharsets.UTF_8), properties), token);
                 mapper.markSent(row.getId(), token);
             } catch (Exception e) {
-                // Retry indefinitely, capped at five minutes; a crash is recovered by lease expiry.
+                // 持续重试，单次间隔最长五分钟；进程崩溃后通过租约到期恢复。
                 int delay = (int) Math.min(300, 1L << Math.min(row.getAttempts() + 1, 9));
                 String error = e.getClass().getSimpleName() + ": " + e.getMessage();
                 mapper.reschedule(row.getId(), token, delay, error.substring(0, Math.min(1000, error.length())));

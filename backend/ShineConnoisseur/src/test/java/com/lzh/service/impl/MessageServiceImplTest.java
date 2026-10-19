@@ -53,13 +53,13 @@ class MessageServiceImplTest {
         userHolderMock = mockStatic(UserHolder.class);
         userHolderMock.when(UserHolder::getUser).thenReturn(mockUser);
 
-        // message query chain
+        // 消息查询调用链
         doReturn(messageQueryChain).when(messageService).query();
         when(messageQueryChain.eq(anyBoolean(), anyString(), any())).thenReturn(messageQueryChain);
         when(messageQueryChain.eq(anyString(), any())).thenReturn(messageQueryChain);
         when(messageQueryChain.orderByDesc(anyString())).thenReturn(messageQueryChain);
 
-        // lambda update chain — used by read() and readAll()
+        // Lambda 更新调用链，供 read() 和 readAll() 使用。
         doReturn(lambdaUpdateChain).when(messageService).lambdaUpdate();
         when(lambdaUpdateChain.eq(any(), any())).thenReturn(lambdaUpdateChain);
         when(lambdaUpdateChain.set(any(), any())).thenReturn(lambdaUpdateChain);
@@ -71,7 +71,7 @@ class MessageServiceImplTest {
         userHolderMock.close();
     }
 
-    // ==================== listAll ====================
+    // ==================== 查询全部消息 ====================
 
     @Test
     void listAll_withType_returnsList() {
@@ -148,7 +148,7 @@ class MessageServiceImplTest {
         verify(vipIdentityService).enrich(anyList());
     }
 
-    // ==================== unreadCount ====================
+    // ==================== 查询未读数量 ====================
 
     @Test
     void unreadCount_hasUnread_returnsCount() {
@@ -170,7 +170,7 @@ class MessageServiceImplTest {
         assertEquals(0L, result.getData());
     }
 
-    // ==================== read ====================
+    // ==================== 标记单条已读 ====================
 
     @Test
     void read_success_returnsOk() {
@@ -191,7 +191,7 @@ class MessageServiceImplTest {
         assertEquals("消息不存在或无权限", result.getErrorMsg());
     }
 
-    // ==================== readAll ====================
+    // ==================== 标记全部已读 ====================
 
     @Test
     void read_fail_noPermission() {
@@ -203,7 +203,7 @@ class MessageServiceImplTest {
         assertEquals("消息不存在或无权限", result.getErrorMsg());
     }
 
-    // ==================== helpers ====================
+    // ==================== 辅助方法 ====================
 
     private Message buildMessage(Long id, Long fromUserId, int type) {
         Message msg = new Message();

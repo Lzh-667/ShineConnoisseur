@@ -148,7 +148,7 @@ onMounted(load)
 .user-name { font-size: 14px; color: rgba(255,255,255,.8); }
 .user-sub { font-size: 12px; color: rgba(255,255,255,.35); }
 
-/* ---- Detail dialog ---- */
+/* ---- 详情弹窗 ---- */
 .user-detail { padding: 4px 0; }
 .detail-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
 .detail-header h3 { margin: 0 0 4px; font-size: 18px; color: rgba(255,255,255,.85); }

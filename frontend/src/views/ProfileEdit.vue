@@ -130,7 +130,7 @@ onMounted(load)
 .form-box { display: flex; flex-direction: column; gap: 4px; }
 .full-width { width: 100%; }
 
-/* Dark inputs */
+/* 深色输入框 */
 .form-box :deep(.el-input__wrapper),
 .form-box :deep(.el-select__wrapper) {
   background: transparent !important;

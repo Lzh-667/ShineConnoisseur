@@ -81,7 +81,7 @@ public class RabbitConfig {
 
     @Bean
     public RabbitTemplate deadLetterRabbitTemplate(ConnectionFactory connectionFactory) {
-        // basicGet/ACK use the consumer connection, never the blocked publisher connection.
+        // 拉取和确认死信使用消费连接，避免受到发布连接阻塞的影响。
         return new RabbitTemplate(connectionFactory);
     }
     @Bean

@@ -33,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import com.lzh.service.MessageOutboxService;
+import com.lzh.service.CacheAfterCommitService;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.redis.core.SetOperations;
@@ -60,6 +61,7 @@ class ReviewServiceImplTest {
     @Mock private IUserService userService;
     @Mock private ILikeRecordService likeRecordService;
     @Mock private MessageOutboxService outboxService;
+    @Mock private CacheAfterCommitService cacheAfterCommit;
     @Mock private ReviewCommentMapper reviewCommentMapper;
     @Mock private ReviewMapper reviewMapper;
     @Mock private ElasticsearchOperations elasticsearchOperations;
@@ -90,7 +92,7 @@ class ReviewServiceImplTest {
         userHolderMock = mockStatic(UserHolder.class);
         userHolderMock.when(UserHolder::getUser).thenReturn(mockUser);
 
-        // review query chain
+        // 影评查询调用链
         doReturn(reviewQueryChain).when(reviewService).query();
         when(reviewQueryChain.eq(any(), any())).thenReturn(reviewQueryChain);
         when(reviewQueryChain.in(anyString(), anySet())).thenReturn(reviewQueryChain);
@@ -101,7 +103,7 @@ class ReviewServiceImplTest {
         when(reviewQueryChain.select(anyString())).thenReturn(reviewQueryChain);
         when(reviewQueryChain.one()).thenReturn(null);
 
-        // review update chain
+        // 影评更新调用链
         doReturn(reviewUpdateChain).when(reviewService).update();
         when(reviewUpdateChain.setSql(anyString())).thenReturn(reviewUpdateChain);
         when(reviewUpdateChain.set(anyString(), any())).thenReturn(reviewUpdateChain);
@@ -109,21 +111,21 @@ class ReviewServiceImplTest {
         when(reviewUpdateChain.gt(anyString(), anyInt())).thenReturn(reviewUpdateChain);
         when(reviewUpdateChain.update()).thenReturn(true);
 
-        // movieService.update() chain
+        // 电影服务更新调用链
         when(movieService.update()).thenReturn(movieUpdateChain);
         when(movieUpdateChain.setSql(anyString())).thenReturn(movieUpdateChain);
         when(movieUpdateChain.eq(any(), any())).thenReturn(movieUpdateChain);
         when(movieUpdateChain.gt(anyString(), anyInt())).thenReturn(movieUpdateChain);
         when(movieUpdateChain.update()).thenReturn(true);
 
-        // userService.update() chain
+        // 用户服务更新调用链
         when(userService.update()).thenReturn(userUpdateChain);
         when(userUpdateChain.setSql(anyString())).thenReturn(userUpdateChain);
         when(userUpdateChain.eq(anyString(), any())).thenReturn(userUpdateChain);
         when(userUpdateChain.gt(anyString(), anyInt())).thenReturn(userUpdateChain);
         when(userUpdateChain.update()).thenReturn(true);
 
-        // likeRecordService
+        // 点赞记录服务
         when(likeRecordService.query()).thenReturn(likeRecordQueryChain);
         when(likeRecordQueryChain.eq(anyString(), any())).thenReturn(likeRecordQueryChain);
         when(likeRecordQueryChain.in(anyString(), anySet())).thenReturn(likeRecordQueryChain);
@@ -136,7 +138,7 @@ class ReviewServiceImplTest {
         userHolderMock.close();
     }
 
-    // ==================== publishReview ====================
+    // ==================== 发布影评 ====================
 
     @Test
     void publishReview_movieNotExists_returnsFail() {
@@ -211,7 +213,7 @@ class ReviewServiceImplTest {
         verify(reviewService).save(any(Review.class));
     }
 
-    // ==================== listReview ====================
+    // ==================== 查询影评 ====================
 
     @Test
     void listReview_movieNotFound_returnsFail() {
@@ -237,7 +239,7 @@ class ReviewServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== likeReview ====================
+    // ==================== 点赞影评 ====================
 
     @Test
     void likeReview_reviewNotFound_returnsFail() {
@@ -258,24 +260,20 @@ class ReviewServiceImplTest {
         when(stringRedisTemplate.hasKey(likeKey)).thenReturn(true);
         when(setOperations.isMember(likeKey, "1")).thenReturn(true);
 
-        var result = reviewService.likeReview(1L); // Liked=true from isLike, so it goes to unlike path...
-        // Actually isLike returns true → goes to unlike path first
+        var result = reviewService.likeReview(1L); // isLike 返回 true，因此进入取消点赞分支。
+        // isLike 返回 true 时会先进入取消点赞分支。
 
-        // should go unlike path but isLike returns true means already liked → go unlike
-        // Wait, if it's liked, it enters the unlike path. That's the toggle behavior.
-        // Let me re-read the code...
+        // 已点赞状态会进入取消点赞分支，这是切换操作的预期行为。
 
-        // The code: Liked = isLike(reviewId, userId); if(Liked) { unlike } else { like }
-        // So if isLike → true → enters unlike path
-        // This is a toggle, not a "already liked" fail
-        // The "不能重复点赞" check is inside the else (like) path
+        // 代码根据 isLike 的结果在取消点赞和点赞两个分支之间切换。
+        // “不能重复点赞”的检查位于点赞分支内部。
     }
 
     @Test
     void likeReview_unlike_success() {
         String likeKey = RedisConstants.LIKE_REVIEW_KEY + 1L;
         when(stringRedisTemplate.hasKey(likeKey)).thenReturn(true);
-        when(setOperations.isMember(likeKey, "1")).thenReturn(true); // isLike=true
+        when(setOperations.isMember(likeKey, "1")).thenReturn(true); // 当前为已点赞状态
         doReturn(true).when(likeRecordService).remove(any(QueryWrapper.class));
         doReturn(buildReviewWithLikeCount(1L, 5)).when(reviewService).getById(1L);
         when(setOperations.remove(likeKey, "1")).thenReturn(1L);
@@ -289,15 +287,15 @@ class ReviewServiceImplTest {
     void likeReview_like_success() {
         String likeKey = RedisConstants.LIKE_REVIEW_KEY + 1L;
         when(stringRedisTemplate.hasKey(likeKey)).thenReturn(false);
-        when(likeRecordQueryChain.list()).thenReturn(Collections.emptyList()); // isLike=false
-        doReturn(true).when(reviewService).exists(any(QueryWrapper.class)); // review exists
-        when(likeRecordQueryChain.exists()).thenReturn(false); // not duplicate
+        when(likeRecordQueryChain.list()).thenReturn(Collections.emptyList()); // 当前为未点赞状态
+        doReturn(true).when(reviewService).exists(any(QueryWrapper.class)); // 影评存在
+        when(likeRecordQueryChain.exists()).thenReturn(false); // 不存在重复记录
         doReturn(true).when(likeRecordService).save(any(LikeRecord.class));
         doReturn(buildReviewWithLikeCount(1L, 5)).when(reviewService).getById(1L);
         when(setOperations.add(anyString(), anyString())).thenReturn(1L);
 
-        // mock the query for sending message — get review author
-        Review reviewForMsg = buildReview(2L, 1L, 1L, 8); // author is userId=2, not current user
+        // 模拟发送消息时查询影评作者。
+        Review reviewForMsg = buildReview(2L, 1L, 1L, 8); // 作者用户为 2，并非当前用户。
         when(reviewQueryChain.select("user_id")).thenReturn(reviewQueryChain);
         when(reviewQueryChain.one()).thenReturn(reviewForMsg);
 
@@ -310,11 +308,11 @@ class ReviewServiceImplTest {
         verify(outboxService).enqueue(any(com.lzh.dto.MessageDTO.class), anyString());
     }
 
-    // ==================== updateReview ====================
+    // ==================== 修改影评 ====================
 
     @Test
     void updateReview_notOwner_returnsFail() {
-        Review review = buildReview(2L, 1L, 1L, 8); // userId=2, current user is 1
+        Review review = buildReview(2L, 1L, 1L, 8); // 影评用户为 2，当前用户为 1。
         doReturn(review).when(reviewService).getById(1L);
 
         ReviewDTO dto = buildReviewDTO(9, "改标题", "改内容", 0);
@@ -326,7 +324,7 @@ class ReviewServiceImplTest {
 
     @Test
     void updateReview_success_returnsOk() {
-        Review review = buildReview(1L, 1L, 1L, 8); // userId=1, same as current user
+        Review review = buildReview(1L, 1L, 1L, 8); // 影评用户和当前用户均为 1。
         doReturn(review).when(reviewService).getById(1L);
 
         ReviewDTO dto = buildReviewDTO(9, "改标题", "改内容", 0);
@@ -335,7 +333,7 @@ class ReviewServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== deleteReview ====================
+    // ==================== 删除影评 ====================
 
     @Test
     void deleteReview_notOwner_returnsFail() {
@@ -365,7 +363,7 @@ class ReviewServiceImplTest {
         verify(reviewService).removeById(1L);
     }
 
-    // ==================== hotReviews ====================
+    // ==================== 热门影评 ====================
 
     @Test
     void hotReviews_emptyZSet_returnsEmpty() {
@@ -394,7 +392,7 @@ class ReviewServiceImplTest {
         assertTrue(result.getSuccess());
     }
 
-    // ==================== helpers ====================
+    // ==================== 辅助方法 ====================
 
     private ReviewDTO buildReviewDTO(int rating, String title, String content, int spoiler) {
         ReviewDTO dto = new ReviewDTO();
@@ -449,7 +447,7 @@ class ReviewServiceImplTest {
         return user;
     }
 
-    // ==================== searchReviews ====================
+    // ==================== 搜索影评 ====================
 
     @Test
     void searchReviews_emptyKeyword_returnsEmptyPage() {

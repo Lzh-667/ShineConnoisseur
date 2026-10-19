@@ -83,7 +83,7 @@ function handleLogout() {
 <style scoped>
 .admin-layout { display: flex; min-height: 100vh; background: #0b0b14; }
 
-/* ===== Sidebar ===== */
+/* ===== 侧边栏 ===== */
 .sidebar {
   width: 240px; background: #0d0d1a;
   border-right: 1px solid rgba(255,255,255,.05);
@@ -120,7 +120,7 @@ function handleLogout() {
 .nav-icon { font-size: 18px; flex-shrink: 0; }
 .nav-label { font-weight: 500; }
 
-/* ===== Main Area ===== */
+/* ===== 主内容区 ===== */
 .main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
 .topbar {

@@ -59,7 +59,7 @@ async function handleDelete(r) {
     await deleteReview(r.id)
     ElMessage.success('已删除')
     load()
-  } catch { /* cancelled */ }
+  } catch { /* 用户已取消 */ }
 }
 
 function formatTime(t) { return t ? new Date(t).toLocaleDateString('zh-CN') : '' }

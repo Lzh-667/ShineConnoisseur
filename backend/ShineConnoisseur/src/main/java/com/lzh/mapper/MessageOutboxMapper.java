@@ -28,7 +28,7 @@ public interface MessageOutboxMapper {
         """)
     List<MessageOutbox> findDue();
 
-    // A lease with a fencing token allows several application instances to dispatch safely.
+    // 租约配合隔离令牌，使多个应用实例能够安全地并发投递。
     @Update("""
         UPDATE message_outbox SET lease_token = #{token},
           next_attempt_at = TIMESTAMPADD(SECOND, 60, NOW(6)), attempts = attempts + 1

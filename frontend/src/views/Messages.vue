@@ -44,7 +44,7 @@ async function handleMarkRead(msg) {
     await markMessageRead(msg.id)
     msg.status = 1
     userStore.decreaseUnread(1)
-  } catch { /* already shown */ }
+  } catch { /* 错误已提示 */ }
 }
 
 async function handleMarkAllRead() {
@@ -54,7 +54,7 @@ async function handleMarkAllRead() {
     list.value.forEach(m => m.status = 1)
     userStore.decreaseUnread(unreadBefore)
     ElMessage.success('已全部标记已读')
-  } catch { /* already shown */ }
+  } catch { /* 错误已提示 */ }
 }
 
 async function handleClick(msg) {

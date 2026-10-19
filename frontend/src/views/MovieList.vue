@@ -126,7 +126,7 @@ onMounted(() => loadHot())
 .filter-right { display: flex; gap: 10px; align-items: center; }
 .filter-small { width: 120px; flex-shrink: 0; }
 
-/* Filter dark inputs */
+/* 筛选区深色输入框 */
 .filter-bar :deep(.el-input__wrapper),
 .filter-bar :deep(.el-select__wrapper) {
   background: rgba(255,255,255,.03) !important;

@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/** Opt-in; requires docker/compose.message-it.yml, never the application database/vhost. */
+/** 需显式启用并启动 docker/compose.message-it.yml，严禁连接应用数据库或应用虚拟主机。 */
 @EnabledIfSystemProperty(named = "message.integration", matches = "true")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MessageInfrastructureTest {
@@ -146,7 +146,7 @@ class MessageInfrastructureTest {
     }
 
     @Test void realBusinessAndOutboxWritesRollbackTogetherAndMigrationIsRepeatable() throws Exception {
-        // Reproduce a database that already installed the first Outbox version.
+        // 模拟已经安装第一版 Outbox 的数据库。
         jdbc.update("ALTER TABLE message_outbox DROP INDEX uk_outbox_dedup, DROP COLUMN dedup_key");
         migrate();
         migrate();
@@ -200,7 +200,7 @@ class MessageInfrastructureTest {
             assertNotNull(first);
             consumer.handleMessage(envelope(first));
             channel.basicNack(first.getEnvelope().getDeliveryTag(), false, true);
-            // The original is delivered again after its retry was already committed.
+            // 重试任务提交后，模拟原消息因确认丢失而再次投递。
             var again = channel.basicGet(MQConstants.MESSAGE_QUEUE, false);
             assertNotNull(again);
             consumer.handleMessage(envelope(again));

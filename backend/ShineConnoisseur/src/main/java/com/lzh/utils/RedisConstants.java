@@ -52,6 +52,6 @@ public class RedisConstants {
     public static final Long RESET_CODE_TTL = 1L;
     public static final String RESET_USER_ERR_KEY = "reset:user:err:";
     public static final Long RESET_USER_ERR_TTL = 10L;
-    /** dashboard统计*/
+    /** 控制台统计 */
     public static final String ADMIN_DASHBOARD_KEY = "admin:dashboard:";
 }

@@ -161,7 +161,7 @@ async function handleSubmit() {
 .brand-name { font-size: 24px; font-weight: 800; color: #f5af19; margin: 0 0 6px; letter-spacing: 1px; }
 .brand-desc { font-size: 13px; color: rgba(255,255,255,.3); margin: 0; }
 
-/* Form */
+/* 表单 */
 .reset-form { display: flex; flex-direction: column; }
 .reset-form :deep(.el-form-item) { margin-bottom: 18px; }
 
@@ -189,7 +189,7 @@ async function handleSubmit() {
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
-/* Code */
+/* 验证码 */
 .code-row { display: flex; gap: 10px; }
 .code-btn {
   flex-shrink: 0; height: 48px; min-width: 100px; padding: 0 12px;
@@ -200,7 +200,7 @@ async function handleSubmit() {
 .code-btn:hover { background: rgba(245,175,25,.14); border-color: rgba(245,175,25,.3); }
 .code-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* Submit */
+/* 提交按钮 */
 .submit-btn {
   width: 100%; height: 50px; margin-top: 4px;
   background: linear-gradient(135deg, #f5af19, #f12711);
@@ -217,12 +217,12 @@ async function handleSubmit() {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Footer */
+/* 底部区域 */
 .card-footer { text-align: center; margin-top: 28px; }
 .card-footer a { color: #f5af19; text-decoration: none; font-size: 13px; font-weight: 500; }
 .card-footer a:hover { color: #f7c04a; }
 
-/* Error */
+/* 错误提示 */
 .reset-form :deep(.el-form-item.is-error .el-input__wrapper) { box-shadow: 0 0 0 1px rgba(245,108,108,.4) inset !important; }
 .reset-form :deep(.el-form-item__error) { color: rgba(245,108,108,.75) !important; font-size: 12px !important; padding-top: 4px !important; }
 

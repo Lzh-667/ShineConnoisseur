@@ -7,6 +7,9 @@ import com.lzh.mapper.MessageFailureMapper;
 import com.rabbitmq.client.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.*;
+import org.springframework.amqp.AmqpException;
+import java.io.IOException;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -63,6 +66,50 @@ class MessageDeadLetterTest {
         assertTrue(fixture.service.replay(1).stoppedOnFailure());
         verify(fixture.channel).basicNack(7L, false, true);
         verify(fixture.channel, never()).basicAck(anyLong(), anyBoolean());
+    }
+
+    @Test void brokerFailureReturnsCompletedDatabaseReplayCount() {
+        RabbitTemplate template = mock(RabbitTemplate.class);
+        MessageOutboxService outbox = mock(MessageOutboxService.class);
+        MessageFailureService failures = mock(MessageFailureService.class);
+        when(failures.ready(2)).thenReturn(List.of(1L));
+        when(failures.replay(1L, null)).thenReturn(true);
+        when(template.execute(any())).thenThrow(new AmqpException("broker offline"));
+        var service = new MessageDeadLetterService(template, outbox, new ObjectMapper(), failures);
+
+        var result = service.replay(2);
+
+        assertEquals(1, result.replayed());
+        assertEquals(0, result.quarantined());
+        assertTrue(result.stoppedOnFailure());
+    }
+
+    @Test void brokerFailureReturnsCompletedQueueReplayCount() throws Exception {
+        RabbitTemplate template = mock(RabbitTemplate.class);
+        Channel channel = mock(Channel.class);
+        MessageOutboxService outbox = mock(MessageOutboxService.class);
+        MessageFailureService failures = mock(MessageFailureService.class);
+        ObjectMapper json = new ObjectMapper();
+        GetResponse valid = new GetResponse(new Envelope(7L, false, "", ""),
+                new AMQP.BasicProperties(), json.writeValueAsBytes(MessageReliabilityTest.dto()), 1);
+        when(channel.basicGet(MQConstants.MESSAGE_DLX_QUEUE, false))
+                .thenReturn(valid)
+                .thenThrow(new IOException("connection lost"));
+        when(template.execute(any())).thenAnswer(invocation -> {
+            ChannelCallback<?> callback = invocation.getArgument(0);
+            try {
+                return callback.doInRabbit(channel);
+            } catch (Exception e) {
+                throw new AmqpException("broker offline", e);
+            }
+        });
+        var service = new MessageDeadLetterService(template, outbox, json, failures);
+
+        var result = service.replay(2);
+
+        assertEquals(1, result.replayed());
+        assertTrue(result.stoppedOnFailure());
+        verify(channel).basicAck(7L, false);
     }
 
     private static class Fixture {

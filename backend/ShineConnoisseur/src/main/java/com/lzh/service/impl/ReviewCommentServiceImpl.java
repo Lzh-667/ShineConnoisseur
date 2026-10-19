@@ -20,6 +20,7 @@ import com.lzh.service.IReviewCommentService;
 import com.lzh.service.IReviewService;
 import com.lzh.service.IUserService;
 import com.lzh.service.VipIdentityService;
+import com.lzh.service.CacheAfterCommitService;
 import com.lzh.utils.RedisConstants;
 import com.lzh.utils.SystemConstants;
 import com.lzh.utils.UserHolder;
@@ -55,6 +56,8 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
     private MessageOutboxService outboxService;
     @Resource
     private VipIdentityService vipIdentityService;
+    @Resource
+    private CacheAfterCommitService cacheAfterCommit;
 
     @Transactional
     @Override
@@ -291,8 +294,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     throw new BusinessException("取消点赞失败");
                 }
                 log.info("取消点赞成功");
-                // 移除缓存
-                stringRedisTemplate.opsForSet().remove(commentKey, userId.toString());
+                cacheAfterCommit.evict("评论点赞状态变更", commentKey);
             }
             else{
                 log.info("取消点赞失败");
@@ -345,8 +347,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                     dto.setContent("用户" + userService.getById(userId).getNickname() + "点赞了你的评论");
                     outboxService.enqueue(dto, "message.like.comment");
                 }
-                stringRedisTemplate.opsForSet().add(commentKey, userId.toString());
-                stringRedisTemplate.expire(commentKey, RedisConstants.LIKE_COMMENT_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
+                cacheAfterCommit.evict("评论点赞状态变更", commentKey);
             }
             else{
                 log.info("点赞失败");
@@ -384,7 +385,8 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                         .eq("target_id", reviewCommentId)
                         .eq("target_type", SystemConstants.TARGET_COMMENT)
         );
-        stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
+        Set<String> cacheKeys = new HashSet<>();
+        cacheKeys.add(RedisConstants.LIKE_COMMENT_KEY + reviewCommentId);
         int commentCountDelta = 1;
         // 4. 级联删除子评论（只对根评论）
         if (comment.getReplyUserId() == 0) {
@@ -402,9 +404,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                                 .in("target_id", childIds)
                                 .eq("target_type", SystemConstants.TARGET_COMMENT)
                 );
-                childIds.forEach(id ->
-                        stringRedisTemplate.delete(RedisConstants.LIKE_COMMENT_KEY + id)
-                );
+                childIds.forEach(id -> cacheKeys.add(RedisConstants.LIKE_COMMENT_KEY + id));
                 int deleted = getBaseMapper().delete(
                         new QueryWrapper<ReviewComment>()
                                 .in("id", childIds)
@@ -421,6 +421,7 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 .eq("id", comment.getReviewId())
                 .gt("comment_count", commentCountDelta - 1)
                 .update();
+        cacheAfterCommit.evict("删除评论", cacheKeys.toArray(String[]::new));
         log.info("删除成功");
         return Result.ok();
     }

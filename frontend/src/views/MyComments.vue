@@ -38,7 +38,7 @@ async function handleDelete(c) {
     ElMessage.success('已删除')
     list.value = list.value.filter(item => item.id !== c.id)
     if (list.value.length === 0 && hasMore.value) load()
-  } catch { /* cancelled */ }
+  } catch { /* 用户已取消 */ }
 }
 
 function formatTime(t) { return t ? new Date(t).toLocaleDateString('zh-CN') : '' }

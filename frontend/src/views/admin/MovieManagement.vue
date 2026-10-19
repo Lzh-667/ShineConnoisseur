@@ -229,7 +229,7 @@ onMounted(load)
 .movie-sub { font-size: 12px; color: rgba(255,255,255,.35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rating { color: #f5af19; font-weight: 600; }
 
-/* ---- Form ---- */
+/* ---- 表单 ---- */
 .movie-form { display: flex; flex-direction: column; gap: 14px; }
 .cover-row { display: flex; gap: 10px; }
 .cover-row > .el-input { flex: 1; }
