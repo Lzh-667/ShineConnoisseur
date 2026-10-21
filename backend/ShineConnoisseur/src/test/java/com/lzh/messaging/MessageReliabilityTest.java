@@ -1,5 +1,11 @@
 package com.lzh.messaging;
 
+import com.lzh.service.impl.ConfirmedMessagePublisherImpl;
+
+import com.lzh.service.impl.MessageOutboxServiceImpl;
+
+import com.lzh.service.impl.MessageFailureServiceImpl;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lzh.consumer.MessageConsumer;
 import com.lzh.dto.MessageDTO;
@@ -29,7 +35,7 @@ class MessageReliabilityTest {
     private final IMessageService messages = mock(IMessageService.class);
     private final MessageOutboxService outbox = mock(MessageOutboxService.class);
     private final MessageFailureMapper failureMapper = mock(MessageFailureMapper.class);
-    private final MessageFailureService failures = new MessageFailureService(failureMapper, outbox, new ObjectMapper());
+    private final MessageFailureService failures = new MessageFailureServiceImpl(failureMapper, outbox, new ObjectMapper());
 
     static MessageDTO dto() {
         MessageDTO dto = new MessageDTO();
@@ -84,7 +90,7 @@ class MessageReliabilityTest {
     }
 
     @Test void retryDelaysArePersistedAndBounded() {
-        var service = new MessageOutboxService(mapper, new ObjectMapper());
+        var service = new MessageOutboxServiceImpl(mapper, new ObjectMapper());
         service.retry(dto(), 1, "delivery"); service.retry(dto(), 2, "delivery"); service.retry(dto(), 3, "delivery");
         verify(mapper).insertOnce(anyString(), eq("message.retry"), eq(1), eq(10), anyString());
         verify(mapper).insertOnce(anyString(), eq("message.retry"), eq(2), eq(60), anyString());
@@ -100,7 +106,7 @@ class MessageReliabilityTest {
         when(mapper.claim(eq(5L), anyString())).thenReturn(1);
         var connectionFactory = mock(CachingConnectionFactory.class);
         when(connectionFactory.getPublisherConnectionFactory()).thenReturn(mock(CachingConnectionFactory.class));
-        return new MessageOutboxTask(mapper, new ConfirmedMessagePublisher(template, connectionFactory));
+        return new MessageOutboxTask(mapper, new ConfirmedMessagePublisherImpl(template, connectionFactory));
     }
 
     private void confirm(boolean ack, boolean returned) {

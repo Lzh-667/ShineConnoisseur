@@ -1,5 +1,9 @@
 package com.lzh.messaging;
 
+import com.lzh.service.impl.MessageDeadLetterServiceImpl;
+
+import com.lzh.service.impl.MessageFailureServiceImpl;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lzh.service.*;
 import com.lzh.utils.MQConstants;
@@ -75,7 +79,7 @@ class MessageDeadLetterTest {
         when(failures.ready(2)).thenReturn(List.of(1L));
         when(failures.replay(1L, null)).thenReturn(true);
         when(template.execute(any())).thenThrow(new AmqpException("broker offline"));
-        var service = new MessageDeadLetterService(template, outbox, new ObjectMapper(), failures);
+        var service = new MessageDeadLetterServiceImpl(template, outbox, new ObjectMapper(), failures);
 
         var result = service.replay(2);
 
@@ -103,7 +107,7 @@ class MessageDeadLetterTest {
                 throw new AmqpException("broker offline", e);
             }
         });
-        var service = new MessageDeadLetterService(template, outbox, json, failures);
+        var service = new MessageDeadLetterServiceImpl(template, outbox, json, failures);
 
         var result = service.replay(2);
 
@@ -127,7 +131,7 @@ class MessageDeadLetterTest {
             when(channel.basicGet(MQConstants.MESSAGE_DLX_QUEUE, false)).thenReturn(
                     new GetResponse(new Envelope(7L, false, "", ""), new AMQP.BasicProperties(),
                             json.writeValueAsBytes(MessageReliabilityTest.dto()), 0));
-            service = new MessageDeadLetterService(template, outbox, json, new MessageFailureService(failures, outbox, json));
+            service = new MessageDeadLetterServiceImpl(template, outbox, json, new MessageFailureServiceImpl(failures, outbox, json));
         }
     }
 }

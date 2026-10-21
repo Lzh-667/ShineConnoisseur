@@ -1,5 +1,7 @@
 package com.lzh.service;
 
+import com.lzh.service.impl.CacheAfterCommitServiceImpl;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,7 +29,7 @@ class CacheAfterCommitServiceTest {
     void evictsOnlyAfterCommit() {
         StringRedisTemplate redis = mock(StringRedisTemplate.class);
         TaskScheduler scheduler = mock(TaskScheduler.class);
-        var service = new CacheAfterCommitService(redis, scheduler);
+        var service = new CacheAfterCommitServiceImpl(redis, scheduler);
         TransactionSynchronizationManager.setActualTransactionActive(true);
         TransactionSynchronizationManager.initSynchronization();
 
@@ -42,7 +44,7 @@ class CacheAfterCommitServiceTest {
     void schedulesRetryWhenRedisIsTemporarilyUnavailable() {
         StringRedisTemplate redis = mock(StringRedisTemplate.class);
         TaskScheduler scheduler = mock(TaskScheduler.class);
-        var service = new CacheAfterCommitService(redis, scheduler);
+        var service = new CacheAfterCommitServiceImpl(redis, scheduler);
         TransactionSynchronizationManager.setActualTransactionActive(true);
         TransactionSynchronizationManager.initSynchronization();
         doThrow(new IllegalStateException("redis down")).when(redis).delete(List.of("cache:a"));
@@ -55,7 +57,7 @@ class CacheAfterCommitServiceTest {
 
     @Test
     void rejectsRegistrationOutsideTransaction() {
-        var service = new CacheAfterCommitService(mock(StringRedisTemplate.class), mock(TaskScheduler.class));
+        var service = new CacheAfterCommitServiceImpl(mock(StringRedisTemplate.class), mock(TaskScheduler.class));
         assertThrows(IllegalStateException.class, () -> service.evict("测试", "cache:a"));
     }
 }

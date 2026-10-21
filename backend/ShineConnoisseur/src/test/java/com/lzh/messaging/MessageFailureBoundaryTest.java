@@ -1,5 +1,9 @@
 package com.lzh.messaging;
 
+import com.lzh.service.impl.MessageOutboxServiceImpl;
+
+import com.lzh.service.impl.MessageFailureServiceImpl;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lzh.config.RabbitConfig;
 import com.lzh.consumer.MessageConsumer;
@@ -25,7 +29,7 @@ class MessageFailureBoundaryTest {
         var outbox = mock(MessageOutboxService.class);
         var messages = mock(IMessageService.class);
         var consumer = new MessageConsumer(messages, outbox,
-                new MessageFailureService(mapper, outbox, new ObjectMapper()));
+                new MessageFailureServiceImpl(mapper, outbox, new ObjectMapper()));
         var method = MessageConsumer.class.getMethod("handleMessage", Message.class);
         var adapter = new MessagingMessageListenerAdapter(consumer, method);
         adapter.setMessageConverter(new RabbitConfig().rawMessageConverter());
@@ -47,14 +51,14 @@ class MessageFailureBoundaryTest {
         when(messages.save(any())).thenThrow(new IllegalStateException("DB down"));
         when(mapper.insert(any())).thenThrow(new IllegalStateException("DB down"));
         var consumer = new MessageConsumer(messages, outbox,
-                new MessageFailureService(mapper, outbox, new ObjectMapper()));
+                new MessageFailureServiceImpl(mapper, outbox, new ObjectMapper()));
         assertThrows(ImmediateRequeueAmqpException.class,
                 () -> consumer.handleMessage(MessageReliabilityTest.raw(3)));
     }
 
     @Test void redeliveryUsesExactlyTheSameRetryDedupKey() {
         var mapper = mock(MessageOutboxMapper.class);
-        var service = new MessageOutboxService(mapper, new ObjectMapper());
+        var service = new MessageOutboxServiceImpl(mapper, new ObjectMapper());
         service.retry(MessageReliabilityTest.dto(), 1, "original-1");
         service.retry(MessageReliabilityTest.dto(), 1, "original-1");
         service.retry(MessageReliabilityTest.dto(), 2, "original-1");
@@ -69,7 +73,7 @@ class MessageFailureBoundaryTest {
         var outbox = mock(MessageOutboxService.class);
         var row = new MessageFailure(); row.setStatus("REPLAYED");
         when(mapper.lock(1)).thenReturn(row);
-        assertFalse(new MessageFailureService(mapper, outbox, new ObjectMapper()).replay(1, null));
+        assertFalse(new MessageFailureServiceImpl(mapper, outbox, new ObjectMapper()).replay(1, null));
         verifyNoInteractions(outbox);
     }
 
@@ -78,7 +82,7 @@ class MessageFailureBoundaryTest {
         var outbox = mock(MessageOutboxService.class);
         var row = new MessageFailure(); row.setStatus("READY"); row.setBody(new byte[]{0});
         when(mapper.lock(1)).thenReturn(row);
-        assertFalse(new MessageFailureService(mapper, outbox, new ObjectMapper()).replay(1, null));
+        assertFalse(new MessageFailureServiceImpl(mapper, outbox, new ObjectMapper()).replay(1, null));
         verify(mapper).markInvalid(eq(1L), anyString());
         verifyNoInteractions(outbox);
     }
@@ -88,7 +92,7 @@ class MessageFailureBoundaryTest {
         var outbox = mock(MessageOutboxService.class);
         var row = new MessageFailure(); row.setStatus("INVALID"); row.setBody(new byte[]{0});
         when(mapper.lock(1)).thenReturn(row); when(mapper.markReplayed(1)).thenReturn(1);
-        assertTrue(new MessageFailureService(mapper, outbox, new ObjectMapper())
+        assertTrue(new MessageFailureServiceImpl(mapper, outbox, new ObjectMapper())
                 .replay(1, MessageReliabilityTest.dto()));
         var order = inOrder(outbox, mapper);
         order.verify(outbox).replay(any(), eq("failure:1"));

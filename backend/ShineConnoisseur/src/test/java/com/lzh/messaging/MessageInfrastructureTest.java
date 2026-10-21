@@ -1,5 +1,13 @@
 package com.lzh.messaging;
 
+import com.lzh.service.impl.MessageDeadLetterServiceImpl;
+
+import com.lzh.service.impl.ConfirmedMessagePublisherImpl;
+
+import com.lzh.service.impl.MessageOutboxServiceImpl;
+
+import com.lzh.service.impl.MessageFailureServiceImpl;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lzh.config.MessageMQConfig;
 import com.lzh.config.RabbitConfig;
@@ -93,7 +101,7 @@ class MessageInfrastructureTest {
         factory.setDataSource(dataSource); factory.setConfiguration(mybatis);
         var sessions = new SqlSessionTemplate(factory.getObject());
         context = new AnnotationConfigApplicationContext();
-        context.register(Transactions.class, MessageOutboxService.class, MessageFailureService.class);
+        context.register(Transactions.class, MessageOutboxServiceImpl.class, MessageFailureServiceImpl.class);
         context.registerBean(DataSourceTransactionManager.class, () -> txManager);
         context.registerBean(ObjectMapper.class, () -> new ObjectMapper());
         context.registerBean(MessageOutboxMapper.class, () -> sessions.getMapper(MessageOutboxMapper.class));
@@ -114,7 +122,7 @@ class MessageInfrastructureTest {
         connectionFactory.setPublisherReturns(true);
         producer = config.rabbitTemplate(connectionFactory, config.messageConverter(), new RabbitTemplateConfigurer(new RabbitProperties()));
         receiver = config.deadLetterRabbitTemplate(connectionFactory);
-        publisher = new ConfirmedMessagePublisher(producer, connectionFactory);
+        publisher = new ConfirmedMessagePublisherImpl(producer, connectionFactory);
         admin = new RabbitAdmin(connectionFactory);
         var topology = new MessageMQConfig();
         admin.declareExchange(topology.messageExchange());
@@ -123,7 +131,7 @@ class MessageInfrastructureTest {
         admin.declareQueue(topology.messageDlxQueue());
         admin.declareBinding(topology.messageBinding(topology.messageQueue(), topology.messageExchange()));
         admin.declareBinding(topology.messageDlxBinding(topology.messageDlxQueue(), topology.messageDlxExchange()));
-        replay = new MessageDeadLetterService(receiver, outbox, new ObjectMapper(), failures);
+        replay = new MessageDeadLetterServiceImpl(receiver, outbox, new ObjectMapper(), failures);
     }
 
     @BeforeEach void clearOnlyIsolatedFixtures() {

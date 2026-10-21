@@ -1,5 +1,7 @@
 package com.lzh.messaging;
 
+import com.lzh.service.impl.ConfirmedMessagePublisherImpl;
+
 import com.lzh.service.ConfirmedMessagePublisher;
 import com.rabbitmq.client.BlockedListener;
 import org.junit.jupiter.api.Test;
@@ -79,7 +81,7 @@ class MessagePublisherBoundaryTest {
         final Connection springConnection = mock(Connection.class);
         Fixture() {
             when(consumerFactory.getPublisherConnectionFactory()).thenReturn(publisherFactory);
-            publisher = new ConfirmedMessagePublisher(template, consumerFactory);
+            publisher = new ConfirmedMessagePublisherImpl(template, consumerFactory);
             var listener = ArgumentCaptor.forClass(ConnectionListener.class);
             verify(publisherFactory).addConnectionListener(listener.capture());
             when(springConnection.getDelegate()).thenReturn(nativeConnection);

@@ -1,5 +1,7 @@
 package com.lzh.messaging;
 
+import com.lzh.service.impl.MessageOutboxServiceImpl;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lzh.mapper.MessageOutboxMapper;
 import com.lzh.service.MessageOutboxService;
@@ -29,7 +31,7 @@ class MessageOutboxTransactionTest {
         var mapper = mock(MessageOutboxMapper.class);
         when(mapper.insert(anyString(), anyString(), anyInt(), anyInt())).thenReturn(1);
         try (var context = new AnnotationConfigApplicationContext()) {
-            context.register(Config.class, MessageOutboxService.class);
+            context.register(Config.class, MessageOutboxServiceImpl.class);
             context.registerBean(DataSourceTransactionManager.class, () -> manager);
             context.registerBean(MessageOutboxMapper.class, () -> mapper);
             context.registerBean(ObjectMapper.class, () -> new ObjectMapper());
