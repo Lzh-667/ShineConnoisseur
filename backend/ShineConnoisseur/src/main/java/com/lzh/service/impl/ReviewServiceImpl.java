@@ -460,12 +460,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                                 .eq("target_type", SystemConstants.TARGET_COMMENT)
                 );
                 commentIds.forEach(id -> cacheKeys.add(RedisConstants.LIKE_COMMENT_KEY + id));
-                int deleted = reviewCommentMapper.delete(
+                // 数据库异常直接向上传播，由事务回滚。
+                reviewCommentMapper.delete(
                         new QueryWrapper<ReviewComment>().eq("review_id", reviewId)
                 );
-                if (deleted == 0) {
-                    throw new BusinessException("级联删除评论失败");
-                }
             }
             cacheKeys.add(RedisConstants.LIKE_REVIEW_KEY + reviewId);
             cacheKeys.add(RedisConstants.HOT_REVIEW_KEY);

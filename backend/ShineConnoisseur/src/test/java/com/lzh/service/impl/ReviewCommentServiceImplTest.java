@@ -236,6 +236,43 @@ class ReviewCommentServiceImplTest {
 
     // ==================== 删除影评评论 ====================
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {0, 1, 2})
+    void deleteReviewComment_countsOnlyChildrenActuallyDeleted(int deleted) {
+        prepareRootWithChildrenForDeletion();
+        when(reviewCommentMapper.delete(any(QueryWrapper.class))).thenReturn(deleted);
+
+        assertTrue(commentService.deleteReviewComment(1L).getSuccess());
+
+        verify(reviewUpdateChain).setSql("comment_count = comment_count - " + (1 + deleted));
+        verify(reviewUpdateChain).gt("comment_count", deleted);
+        var keys = org.mockito.ArgumentCaptor.forClass(String[].class);
+        verify(cacheAfterCommit).evict(eq("删除评论"), keys.capture());
+        assertTrue(java.util.Arrays.asList(keys.getValue()).containsAll(List.of(
+                        RedisConstants.LIKE_COMMENT_KEY + 1L,
+                        RedisConstants.LIKE_COMMENT_KEY + 2L,
+                        RedisConstants.LIKE_COMMENT_KEY + 3L)));
+    }
+
+    @Test
+    void deleteReviewComment_childDeleteDatabaseError_propagates() {
+        prepareRootWithChildrenForDeletion();
+        var error = new org.springframework.dao.DataAccessResourceFailureException("database unavailable");
+        when(reviewCommentMapper.delete(any(QueryWrapper.class))).thenThrow(error);
+
+        assertSame(error, assertThrows(org.springframework.dao.DataAccessException.class,
+                () -> commentService.deleteReviewComment(1L)));
+        verify(reviewUpdateChain, never()).update();
+        verifyNoInteractions(cacheAfterCommit);
+    }
+
+    private void prepareRootWithChildrenForDeletion() {
+        doReturn(buildComment(1L, 1L, 1L, 0L)).when(commentService).getById(1L);
+        doReturn(true).when(commentService).removeById(1L);
+        when(commentQueryChain.list()).thenReturn(List.of(
+                buildComment(2L, 2L, 1L, 1L), buildComment(3L, 3L, 1L, 1L)));
+    }
+
     @Test
     void deleteReviewComment_notOwner_returnsFail() {
         ReviewComment comment = buildComment(1L, 2L, 1L, 0L); // 评论用户为 2，当前用户为 1。

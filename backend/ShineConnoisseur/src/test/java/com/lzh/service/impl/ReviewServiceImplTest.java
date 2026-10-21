@@ -11,6 +11,7 @@ import com.lzh.mapper.ReviewMapper;
 import com.lzh.po.LikeRecord;
 import com.lzh.po.Movie;
 import com.lzh.po.Review;
+import com.lzh.po.ReviewComment;
 import com.lzh.po.User;
 import com.lzh.repository.ReviewSearchRepository;
 import com.lzh.service.ILikeRecordService;
@@ -334,6 +335,38 @@ class ReviewServiceImplTest {
     }
 
     // ==================== 删除影评 ====================
+
+    @Test
+    void deleteReview_commentsAlreadyDeleted_stillSucceedsAndInvalidatesCache() {
+        prepareReviewWithCommentForDeletion();
+        when(reviewCommentMapper.delete(any(QueryWrapper.class))).thenReturn(0);
+
+        assertTrue(reviewService.deleteReview(1L).getSuccess());
+
+        var keys = org.mockito.ArgumentCaptor.forClass(String[].class);
+        verify(cacheAfterCommit).evict(eq("删除影评"), keys.capture());
+        assertTrue(java.util.Arrays.asList(keys.getValue()).contains(RedisConstants.LIKE_COMMENT_KEY + 2L));
+        verify(reviewSearchRepository).deleteById(1L);
+    }
+
+    @Test
+    void deleteReview_commentDeleteDatabaseError_propagates() {
+        prepareReviewWithCommentForDeletion();
+        var error = new org.springframework.dao.DataAccessResourceFailureException("database unavailable");
+        when(reviewCommentMapper.delete(any(QueryWrapper.class))).thenThrow(error);
+
+        assertSame(error, assertThrows(org.springframework.dao.DataAccessException.class,
+                () -> reviewService.deleteReview(1L)));
+        verifyNoInteractions(cacheAfterCommit, reviewSearchRepository);
+    }
+
+    private void prepareReviewWithCommentForDeletion() {
+        doReturn(buildReview(1L, 1L, 1L, 8)).when(reviewService).getById(1L);
+        doReturn(true).when(reviewService).removeById(1L);
+        ReviewComment comment = new ReviewComment();
+        comment.setId(2L);
+        when(reviewCommentMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(comment));
+    }
 
     @Test
     void deleteReview_notOwner_returnsFail() {

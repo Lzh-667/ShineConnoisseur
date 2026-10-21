@@ -409,10 +409,8 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                         new QueryWrapper<ReviewComment>()
                                 .in("id", childIds)
                 );
-                if (deleted == 0) {
-                    throw new BusinessException("级联删除子评论失败");
-                }
-                commentCountDelta += children.size();
+                // 子评论可能已被并发删除，只扣减本次实际删除的数量（允许为 0）。
+                commentCountDelta += deleted;
             }
         }
         // 5. 更新影评的评论数
