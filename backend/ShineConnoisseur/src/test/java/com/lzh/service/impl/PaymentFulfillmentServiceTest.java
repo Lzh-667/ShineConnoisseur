@@ -34,6 +34,8 @@ class PaymentFulfillmentServiceTest {
     private PaymentOrderMapper paymentOrderMapper;
     @Mock
     private UserVipMapper userVipMapper;
+    @Mock
+    private com.lzh.mapper.PaymentRefundMapper refundMapper;
     @InjectMocks
     private PaymentFulfillmentServiceImpl paymentFulfillmentService;
 

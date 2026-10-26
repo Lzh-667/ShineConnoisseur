@@ -48,7 +48,9 @@ public class SystemConstants {
     public static final Integer ORDER_STATUS_WAIT_PAY = 5;
     /** 正在向支付渠道关单 */
     public static final Integer ORDER_STATUS_CLOSING = 6;
-    /** 已扣款但本地无法履约，正在进行幂等退款补偿 */
+    /** 用户主动退款或无法履约时的自动退款补偿 */
     public static final Integer ORDER_STATUS_REFUNDING = 7;
+    /** 已验证支付，等待当前用户的退款完成后发放权益 */
+    public static final Integer ORDER_STATUS_PAID_PENDING = 8;
 
 }

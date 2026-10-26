@@ -15,6 +15,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./docker/mysql/02-payment-refund.sql:/docker-entrypoint-initdb.d/02-payment-refund.sql:ro
     networks:
       - shine-network
     healthcheck:

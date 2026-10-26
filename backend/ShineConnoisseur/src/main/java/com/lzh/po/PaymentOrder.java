@@ -30,7 +30,7 @@ public class PaymentOrder {
     private BigDecimal amount;
     /** 支付方式：1支付宝，2微信 */
     private Integer paymentMethod;
-    /** 订单状态：0待发起，1支付成功，2已关闭，3已退款，4发起中，5待支付，6关单中，7退款中 */
+    /** 订单状态：0待发起，1支付成功，2已关闭，3已退款，4发起中，5待支付，6关单中，7退款中，8已支付待发权益 */
     private Integer status;
     /** 第三方支付交易号 */
     private String transactionId;

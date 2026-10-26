@@ -36,6 +36,7 @@ class ServiceWiringTest {
             context.registerBean(MovieFavoriteMapper.class, () -> mock(MovieFavoriteMapper.class));
             context.registerBean(ReviewMapper.class, () -> mock(ReviewMapper.class));
             context.registerBean(PaymentOrderMapper.class, () -> mock(PaymentOrderMapper.class));
+            context.registerBean(PaymentRefundMapper.class, () -> mock(PaymentRefundMapper.class));
             context.registerBean(AlipayService.class, () -> mock(AlipayService.class));
             context.registerBean(WechatPayService.class, () -> mock(WechatPayService.class));
             context.refresh();

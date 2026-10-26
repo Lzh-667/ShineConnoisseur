@@ -4,6 +4,8 @@ import com.lzh.service.PaymentOrderStateService;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.lzh.mapper.PaymentOrderMapper;
+import com.lzh.mapper.PaymentRefundMapper;
+import org.springframework.transaction.annotation.Transactional;
 import com.lzh.po.PaymentOrder;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +20,17 @@ import java.time.LocalDateTime;
 public class PaymentOrderStateServiceImpl implements PaymentOrderStateService {
 
     private final PaymentOrderMapper paymentOrderMapper;
+    private final PaymentRefundMapper refundMapper;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean transition(Long orderId, Integer fromStatus, Integer toStatus) {
+        if (java.util.Objects.equals(toStatus, SystemConstants.ORDER_STATUS_INITIATING)) {
+            PaymentOrder order = paymentOrderMapper.selectById(orderId);
+            if (order == null) return false;
+            refundMapper.lockUser(order.getUserId());
+            if (refundMapper.pendingCount(order.getUserId()) > 0) return false;
+        }
         return paymentOrderMapper.update(
                 null,
                 new LambdaUpdateWrapper<PaymentOrder>()

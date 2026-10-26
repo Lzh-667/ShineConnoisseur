@@ -18,4 +18,10 @@ public class PaymentOrderVO {
     private Integer paymentMethod;
     private Integer status;
     private LocalDateTime expireTime;
+    private LocalDateTime payTime;
+    private boolean refundEligible;
+    private LocalDateTime refundDeadline;
+    private String refundNo;
+    private LocalDateTime refundRequestedAt;
+    private LocalDateTime refundCompletedAt;
 }

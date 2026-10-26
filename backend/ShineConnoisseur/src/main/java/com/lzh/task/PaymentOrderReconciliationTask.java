@@ -43,7 +43,8 @@ public class PaymentOrderReconciliationTask {
                                 SystemConstants.ORDER_STATUS_INITIATING,
                                 SystemConstants.ORDER_STATUS_WAIT_PAY,
                                 SystemConstants.ORDER_STATUS_CLOSING,
-                                SystemConstants.ORDER_STATUS_REFUNDING)
+                                SystemConstants.ORDER_STATUS_REFUNDING,
+                                SystemConstants.ORDER_STATUS_PAID_PENDING)
                         .lt(PaymentOrder::getUpdateTime, now.minusSeconds(30))
                         .orderByAsc(PaymentOrder::getUpdateTime)
                         .last("LIMIT 100")

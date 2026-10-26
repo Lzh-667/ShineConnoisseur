@@ -4,6 +4,8 @@ import com.lzh.common.Result;
 import com.lzh.service.AlipayService;
 import com.lzh.service.IPaymentOrderService;
 import com.lzh.service.WechatPayService;
+import com.lzh.service.PaymentRefundService;
+import com.lzh.utils.UserHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -28,6 +30,22 @@ public class PaymentOrderController {
     private AlipayService alipayService;
     @Resource
     private WechatPayService wechatPayService;
+    @Resource
+    private PaymentRefundService paymentRefundService;
+
+    @GetMapping("/orders/recent")
+    @Operation(summary = "最近20笔订单及退款资格")
+    public Result recentOrders() {
+        return Result.ok(paymentRefundService.recentOrders(UserHolder.getUser().getId()));
+    }
+
+    @PostMapping("/orders/{orderNo}/refund")
+    @Operation(summary = "最近已支付订单24小时内全额退款")
+    public Result refund(@PathVariable String orderNo) {
+        var refund = paymentRefundService.request(UserHolder.getUser().getId(), orderNo);
+        // 只受理并持久化；后台任务在事务提交后查询/发起退款，重启后仍可恢复。
+        return Result.ok(java.util.Map.of("refundNo", refund.getRefundNo(), "status", refund.getStatus()));
+    }
     @PostMapping("/orders")
     @Operation(summary = "创建支付订单")
     public Result createOrder(@RequestParam Long productId,

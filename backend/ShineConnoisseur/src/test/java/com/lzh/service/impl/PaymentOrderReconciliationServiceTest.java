@@ -32,6 +32,8 @@ class PaymentOrderReconciliationServiceTest {
     @Mock
     private PaymentOrderMapper paymentOrderMapper;
     @Mock
+    private com.lzh.mapper.PaymentRefundMapper refundMapper;
+    @Mock
     private PaymentFulfillmentService fulfillmentService;
     @Mock
     private PaymentOrderStateService stateService;

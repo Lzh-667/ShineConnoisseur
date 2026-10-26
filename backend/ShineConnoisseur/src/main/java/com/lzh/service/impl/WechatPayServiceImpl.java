@@ -55,6 +55,8 @@ public class WechatPayServiceImpl implements WechatPayService {
     private PaymentFulfillmentService paymentFulfillmentService;
     @Resource
     private PaymentOrderStateService paymentOrderStateService;
+    @Resource
+    private com.lzh.mapper.PaymentRefundMapper refundMapper;
     @Override
     public Result wechat(String orderNo) {
         //1.查询订单
@@ -70,6 +72,7 @@ public class WechatPayServiceImpl implements WechatPayService {
         if (!Objects.equals(paymentOrder.getUserId(), userId)) {
             return Result.fail("无权操作该订单");
         }
+        if (refundMapper.pendingCount(userId) > 0) return Result.fail("退款处理中，暂不能发起支付");
         //3.校验支付方式
         if (!Objects.equals(
                 paymentOrder.getPaymentMethod(),
@@ -325,7 +328,7 @@ public class WechatPayServiceImpl implements WechatPayService {
         CreateRequest request = new CreateRequest();
         request.setOutTradeNo(orderNo);
         request.setOutRefundNo(refundRequestNo);
-        request.setReason("支付成功但权益发放失败，自动退款");
+        request.setReason("VIP订单全额退款");
         long cents = amount.movePointRight(2).longValueExact();
         AmountReq refundAmount = new AmountReq();
         refundAmount.setRefund(cents);
@@ -406,6 +409,10 @@ public class WechatPayServiceImpl implements WechatPayService {
         }
         if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)) {
             return Result.fail("订单已支付");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUNDING)
+                || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_PAID_PENDING)) {
+            return Result.fail("订单已支付，正在处理退款或权益，请勿重复支付");
         }
         if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_CLOSE)
                 || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUND)) {

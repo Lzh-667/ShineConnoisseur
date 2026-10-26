@@ -59,6 +59,7 @@ public class AlipayServiceImpl implements AlipayService {
     private final PaymentFulfillmentService paymentFulfillmentService;
 
     private final PaymentOrderStateService paymentOrderStateService;
+    private final com.lzh.mapper.PaymentRefundMapper refundMapper;
     @Override
     public Result alipay(String orderNo) {
         // 1. 查询订单
@@ -77,6 +78,7 @@ public class AlipayServiceImpl implements AlipayService {
         if (!paymentOrder.getUserId().equals(userId)) {
             return Result.fail("无权操作该订单");
         }
+        if (refundMapper.pendingCount(userId) > 0) return Result.fail("退款处理中，暂不能发起支付");
         // 3. 校验支付方式
         if (!paymentOrder.getPaymentMethod()
                 .equals(SystemConstants.VIP_PAY_METHOD_ALIBABA)) {
@@ -307,7 +309,7 @@ public class AlipayServiceImpl implements AlipayService {
         model.setOutTradeNo(orderNo);
         model.setRefundAmount(amount.toPlainString());
         model.setOutRequestNo(refundRequestNo);
-        model.setRefundReason("支付成功但权益发放失败，自动退款");
+        model.setRefundReason("VIP订单全额退款");
         request.setBizModel(model);
         try {
             AlipayTradeRefundResponse response = createClient().execute(request);
@@ -335,11 +337,11 @@ public class AlipayServiceImpl implements AlipayService {
             if (!response.isSuccess()) {
                 return PaymentRefundResult.FAILED;
             }
-            if ("REFUND_SUCCESS".equals(response.getRefundStatus())
-                    || response.getGmtRefundPay() != null) {
+            if ("REFUND_SUCCESS".equals(response.getRefundStatus())) {
                 return PaymentRefundResult.SUCCESS;
             }
-            return PaymentRefundResult.PROCESSING;
+            // 查询成功不代表退款成功；用原请求号、原金额幂等重试。
+            return PaymentRefundResult.FAILED;
         } catch (Exception e) {
             log.error("支付宝退款查询异常，orderNo={}, refundRequestNo={}",
                     orderNo, refundRequestNo, e);
@@ -376,6 +378,10 @@ public class AlipayServiceImpl implements AlipayService {
         }
         if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)) {
             return Result.fail("订单已支付");
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUNDING)
+                || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_PAID_PENDING)) {
+            return Result.fail("订单已支付，正在处理退款或权益，请勿重复支付");
         }
         if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_CLOSE)
                 || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUND)) {

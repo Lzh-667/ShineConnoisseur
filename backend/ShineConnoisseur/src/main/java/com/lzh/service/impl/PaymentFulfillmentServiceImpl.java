@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.lzh.common.BusinessException;
 import com.lzh.mapper.PaymentOrderMapper;
 import com.lzh.mapper.UserVipMapper;
+import com.lzh.mapper.PaymentRefundMapper;
 import com.lzh.po.PaymentOrder;
 import com.lzh.utils.SystemConstants;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
 
     private final PaymentOrderMapper paymentOrderMapper;
     private final UserVipMapper userVipMapper;
+    private final PaymentRefundMapper refundMapper;
 
     @Transactional(rollbackFor = Exception.class)
     @Override
@@ -41,6 +43,10 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
             throw new BusinessException("支付回调关键参数缺失");
         }
 
+        PaymentOrder snapshot = paymentOrderMapper.selectOne(new LambdaQueryWrapper<PaymentOrder>()
+                .eq(PaymentOrder::getOrderNo, orderNo));
+        if (snapshot == null) throw new BusinessException("支付订单不存在");
+        refundMapper.lockUser(snapshot.getUserId());
         PaymentOrder order = paymentOrderMapper.selectOne(
                 new LambdaQueryWrapper<PaymentOrder>()
                         .eq(PaymentOrder::getOrderNo, orderNo)
@@ -56,7 +62,9 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
             throw new BusinessException("支付回调金额与订单不一致");
         }
 
-        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)) {
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)
+                || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUNDING)
+                || Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUND)) {
             bindOrValidateTransactionId(order, transactionId);
             log.info("支付订单已履约，忽略重复通知，orderNo={}, transactionId={}", orderNo, transactionId);
             return;
@@ -66,7 +74,8 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
                 SystemConstants.ORDER_STATUS_INITIATING,
                 SystemConstants.ORDER_STATUS_WAIT_PAY,
                 SystemConstants.ORDER_STATUS_CLOSING,
-                SystemConstants.ORDER_STATUS_CLOSE
+                SystemConstants.ORDER_STATUS_CLOSE,
+                SystemConstants.ORDER_STATUS_PAID_PENDING
         ).contains(order.getStatus())) {
             throw new BusinessException("支付订单状态不允许履约");
         }
@@ -77,6 +86,18 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
         }
 
         LocalDateTime now = LocalDateTime.now();
+        if (StrUtil.isNotBlank(order.getTransactionId()) && !transactionId.equals(order.getTransactionId()))
+            throw new BusinessException("同一订单对应了不同的第三方交易号");
+        if (refundMapper.pendingCount(order.getUserId()) > 0) {
+            // 持久化已验证支付，不依赖渠道无限重试。退款任务完成后由对账任务补发。
+            if (paymentOrderMapper.update(null, new LambdaUpdateWrapper<PaymentOrder>()
+                    .eq(PaymentOrder::getId, order.getId()).eq(PaymentOrder::getStatus, order.getStatus())
+                    .set(PaymentOrder::getStatus, SystemConstants.ORDER_STATUS_PAID_PENDING)
+                    .set(PaymentOrder::getTransactionId, transactionId)
+                    .set(PaymentOrder::getPayTime, order.getPayTime() == null ? now : order.getPayTime())) != 1)
+                throw new BusinessException("支付结果暂存失败");
+            return;
+        }
         int changed = paymentOrderMapper.update(
                 null,
                 new LambdaUpdateWrapper<PaymentOrder>()
@@ -86,10 +107,11 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
                                 SystemConstants.ORDER_STATUS_INITIATING,
                                 SystemConstants.ORDER_STATUS_WAIT_PAY,
                                 SystemConstants.ORDER_STATUS_CLOSING,
-                                SystemConstants.ORDER_STATUS_CLOSE)
+                                SystemConstants.ORDER_STATUS_CLOSE,
+                                SystemConstants.ORDER_STATUS_PAID_PENDING)
                         .set(PaymentOrder::getStatus, SystemConstants.ORDER_STATUS_SUCCESS)
                         .set(PaymentOrder::getTransactionId, transactionId)
-                        .set(PaymentOrder::getPayTime, now)
+                        .set(PaymentOrder::getPayTime, order.getPayTime() == null ? now : order.getPayTime())
         );
         if (changed != 1) {
             throw new BusinessException("支付订单状态已变化");

@@ -9,6 +9,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.Result;
 import com.lzh.mapper.PaymentOrderMapper;
+import com.lzh.mapper.PaymentRefundMapper;
+import org.springframework.transaction.annotation.Transactional;
 import com.lzh.mapper.VipProductMapper;
 import com.lzh.po.PaymentOrder;
 import com.lzh.po.VipProduct;
@@ -32,7 +34,10 @@ public class PaymentOrderServiceImpl extends ServiceImpl<PaymentOrderMapper, Pay
     private VipProductMapper vipProductMapper;
     @Resource
     private PaymentOrderCloseService paymentOrderCloseService;
+    @Resource
+    private PaymentRefundMapper refundMapper;
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result createOrder(Long productId, Integer paymentMethod, String requestId) {
         if (!Objects.equals(paymentMethod, SystemConstants.VIP_PAY_METHOD_ALIBABA) && !Objects.equals(paymentMethod, SystemConstants.VIP_PAY_METHOD_WECHAT)) {
             return Result.fail("不支持的支付方式");
@@ -42,6 +47,8 @@ public class PaymentOrderServiceImpl extends ServiceImpl<PaymentOrderMapper, Pay
         }
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
+        refundMapper.lockUser(userId);
+        if (refundMapper.pendingCount(userId) > 0) return Result.fail("退款处理中，暂不能购买或续费");
         PaymentOrder existingOrder = getOne(
                 new LambdaQueryWrapper<PaymentOrder>()
                         .eq(PaymentOrder::getUserId, userId)
@@ -145,6 +152,10 @@ public class PaymentOrderServiceImpl extends ServiceImpl<PaymentOrderMapper, Pay
             return Result.fail("订单不存在");
         }
         //5.判断状态
+        if (Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_REFUNDING)
+                || Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_PAID_PENDING)) {
+            return Result.fail("订单已支付或退款处理中，无法取消");
+        }
         if(Objects.equals(paymentOrder.getStatus(), SystemConstants.ORDER_STATUS_SUCCESS)){
             return Result.fail("订单已支付，无法取消");
         }

@@ -6,6 +6,7 @@ import com.lzh.service.PaymentOrderReconciliationService;
 
 import com.lzh.common.BusinessException;
 import com.lzh.mapper.PaymentOrderMapper;
+import com.lzh.mapper.PaymentRefundMapper;
 import com.lzh.po.PaymentOrder;
 import com.lzh.service.AlipayService;
 import com.lzh.dto.PaymentOrderQueryResult;
@@ -37,6 +38,7 @@ public class PaymentOrderReconciliationServiceImpl implements PaymentOrderReconc
     );
 
     private final PaymentOrderMapper paymentOrderMapper;
+    private final PaymentRefundMapper refundMapper;
     private final PaymentFulfillmentService fulfillmentService;
     private final PaymentOrderStateService stateService;
     private final AlipayService alipayService;
@@ -44,6 +46,17 @@ public class PaymentOrderReconciliationServiceImpl implements PaymentOrderReconc
 
     @Override
     public Outcome reconcile(PaymentOrder order) {
+        // 用户退款由独立任务处理，不能复用无权益扣回的自动补偿退款路径。
+        var userRefund = refundMapper.findByOrder(order.getId());
+        if (userRefund != null) {
+            return "SUCCESS".equals(userRefund.getStatus()) ? Outcome.REFUNDED : Outcome.UNKNOWN;
+        }
+        if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_PAID_PENDING)) {
+            if (refundMapper.pendingCount(order.getUserId()) > 0) return Outcome.UNKNOWN;
+            fulfillmentService.fulfill(order.getOrderNo(), order.getPaymentMethod(),
+                    order.getTransactionId(), order.getAmount());
+            return Outcome.FULFILLED;
+        }
         if (Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_REFUNDING)) {
             String refundRequestNo = refundRequestNo(order);
             PaymentRefundResult refundStatus = queryRemoteRefund(order, refundRequestNo);

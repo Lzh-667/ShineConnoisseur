@@ -282,6 +282,14 @@ export function cancelPaymentOrder(orderNo) {
   return request({ url: '/payments/delete', method: 'delete', params: { orderNo } })
 }
 
+export function getRecentPaymentOrders() {
+  return request({ url: '/payments/orders/recent', method: 'get' })
+}
+
+export function requestPaymentRefund(orderNo) {
+  return request({ url: `/payments/orders/${encodeURIComponent(orderNo)}/refund`, method: 'post' })
+}
+
 // ========== 文件上传 ==========
 
 /** 上传头像 */
