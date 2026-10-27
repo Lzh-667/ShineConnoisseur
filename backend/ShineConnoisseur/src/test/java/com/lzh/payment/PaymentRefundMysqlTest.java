@@ -66,6 +66,7 @@ class PaymentRefundMysqlTest {
     private WechatPayService wechat;
     private AlipayService alipay;
     private final FaultInjector faults = new FaultInjector();
+    private final java.time.Clock refundClock = mock(java.time.Clock.class);
     private Long userId;
     private Long productId;
     private LocalDateTime baseline;
@@ -107,6 +108,7 @@ class PaymentRefundMysqlTest {
         context.registerBean(UserVipMapper.class, () -> sessions.getMapper(UserVipMapper.class));
         context.registerBean(PaymentRefundMapper.class, () -> sessions.getMapper(PaymentRefundMapper.class));
         context.registerBean(VipProductMapper.class, () -> sessions.getMapper(VipProductMapper.class));
+        context.registerBean(java.time.Clock.class, () -> refundClock);
         context.registerBean(PaymentOrderCloseService.class, () -> mock(PaymentOrderCloseService.class));
         wechat = mock(WechatPayService.class);
         alipay = mock(AlipayService.class);
@@ -122,6 +124,8 @@ class PaymentRefundMysqlTest {
     }
 
     @BeforeEach void fixtures() {
+        reset(refundClock);
+        when(refundClock.instant()).thenAnswer(invocation -> java.time.Instant.now());
         reset(wechat, alipay);
         faults.failGrant.set(false);
         faults.failRevoke.set(false);
@@ -252,6 +256,8 @@ class PaymentRefundMysqlTest {
     }
 
     @Test void concurrentRequestsAndCompletionAreIdempotent() throws Exception {
+        seedRefund("SUCCESS", LocalDateTime.now().withDayOfYear(1).toLocalDate().atStartOfDay());
+        seedRefund("SUCCESS", LocalDateTime.now().withDayOfYear(1).toLocalDate().atStartOfDay());
         String no = paidOrder();
         try (var pool = Executors.newFixedThreadPool(2)) {
             var gate = new CyclicBarrier(2);
@@ -268,6 +274,71 @@ class PaymentRefundMysqlTest {
         }
         assertEquals(ORDER_STATUS_REFUND, status(no));
         assertEquals(baseline, expiry());
+        assertEquals(3, refunds.quota(userId).used());
+        assertEquals(0, refunds.quota(userId).remaining());
+    }
+
+    private void seedRefund(String status, LocalDateTime requestedAt) {
+        String no = newOrder();
+        jdbc.update("INSERT INTO payment_refund(order_id,user_id,order_no,refund_no,amount,duration_days,status,entitlement_expire_before,entitlement_expire_after,requested_at,next_retry_at) VALUES (?,?,?,?,19.90,30,?,?,?,?,?)",
+                orderId(no), userId, no, "UR" + no, status, baseline.plusDays(30), baseline, requestedAt, requestedAt);
+    }
+
+    @Test void threeRefundsAllowedFourthRejectedAndReplayStillWorks() {
+        PaymentRefund last = null;
+        for (int i = 0; i < 3; i++) {
+            String no = paidOrder();
+            last = refunds.request(userId, no);
+            assertEquals(i + 1, refunds.quota(userId).used()); // 处理中已经占用
+            refunds.complete(last.getId());
+        }
+        assertEquals(last.getId(), refunds.request(userId, last.getOrderNo()).getId());
+        String fourth = paidOrder();
+        assertTrue(assertThrows(BusinessException.class, () -> refunds.request(userId, fourth))
+                .getMessage().contains("3次"));
+        assertNull(refundMapper.findByOrder(orderId(fourth)));
+        assertEquals(ORDER_STATUS_SUCCESS, status(fourth));
+        assertEquals(baseline.plusDays(30), expiry());
+        assertFalse(refunds.recentOrders(userId).stream()
+                .filter(o -> fourth.equals(o.getOrderNo())).findFirst().orElseThrow().isRefundEligible());
+    }
+
+    @Test void beijingYearBoundariesAndUnknownResultsKeepQuota() {
+        // UTC还是12月31日，但北京时间已经进入2031年；不依赖测试机默认时区。
+        when(refundClock.instant()).thenReturn(java.time.Instant.parse("2030-12-31T16:00:00Z"));
+        LocalDateTime start = LocalDateTime.of(2031, 1, 1, 0, 0);
+        seedRefund("SUCCESS", start.minusNanos(1000));
+        seedRefund("PROCESSING", start);
+        seedRefund("SUCCESS", start.plusMonths(1));
+        seedRefund("SUCCESS", start.plusYears(1)); // 右边界不计入
+        assertEquals(2031, refunds.quota(userId).year());
+        assertEquals(2, refunds.quota(userId).used());
+        assertEquals(1, refunds.quota(userId).remaining());
+        Long pending = refundMapper.pendingId(userId);
+        refundMapper.recordRetry(pending, "网络超时，退款结果未知", start.plusMinutes(1));
+        assertEquals(2, refunds.quota(userId).used());
+        // 只有已确认终止的记录才能释放；系统没有超时自动终止路径。
+        jdbc.update("UPDATE payment_refund SET status='CANCELLED' WHERE id=?", pending);
+        assertEquals(1, refunds.quota(userId).used());
+    }
+
+    @Test void crossYearCompletionBelongsToApplicationYearAndAutomaticRefundDoesNotCount() {
+        String no = paidOrder();
+        LocalDateTime dec31 = LocalDateTime.of(2030, 12, 31, 23, 59, 59);
+        jdbc.update("UPDATE payment_order SET pay_time=? WHERE order_no=?", dec31.minusHours(1), no);
+        when(refundClock.instant()).thenReturn(dec31.atZone(java.time.ZoneId.of("Asia/Shanghai")).toInstant());
+        var refund = refunds.request(userId, no);
+        assertEquals(1, refunds.quota(userId).used());
+        when(refundClock.instant()).thenReturn(java.time.Instant.parse("2030-12-31T16:00:01Z"));
+        refunds.complete(refund.getId());
+        assertEquals(0, refunds.quota(userId).used());
+        assertEquals(3, refunds.quota(userId).remaining());
+        assertEquals(1, refundMapper.annualUsage(userId,
+                LocalDateTime.of(2030, 1, 1, 0, 0), LocalDateTime.of(2031, 1, 1, 0, 0)));
+        String automatic = newOrder();
+        jdbc.update("UPDATE payment_order SET status=3 WHERE order_no=?", automatic);
+        assertEquals(0, refunds.quota(userId).used()); // 自动补偿没有用户退款记录
+        assertEquals(0, refunds.quota(userId + 999999).used());
     }
 
     @Test void pendingRefundBlocksCreatingOrdersAndHistoryIsOwnerScoped() {

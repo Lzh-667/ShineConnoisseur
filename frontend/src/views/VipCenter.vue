@@ -11,6 +11,7 @@ import {
   getPaymentOrder,
   getVipProducts,
   getRecentPaymentOrders,
+  getRefundQuota,
   requestPaymentRefund,
   startAlipay,
   startWechatPay,
@@ -29,11 +30,14 @@ const wechatQrCode = ref('')
 let pollTimer = null
 let refundPollTimer = null
 const recentOrders = ref([])
+const refundQuota = ref(null)
 const refundSubmitting = ref(false)
 const refundPending = computed(() => recentOrders.value.some(item => item.status === 7))
 
 async function loadRecentOrders() {
-  recentOrders.value = (await getRecentPaymentOrders()).data || []
+  const [ordersRes, quotaRes] = await Promise.all([getRecentPaymentOrders(), getRefundQuota()])
+  recentOrders.value = ordersRes.data || []
+  refundQuota.value = quotaRes.data
 }
 
 async function applyRefund(item) {
@@ -312,6 +316,8 @@ onUnmounted(() => {
       </div>
       <p class="demo-note">仅最近一笔已支付订单可在支付成功后24小时内申请全额退款，使用过权益也可申请。退款成功后扣回对应时长，上一笔订单不会因此重新获得退款资格。</p>
       <el-alert v-if="refundPending" title="退款处理中，暂不能购买或续费；已受理申请不受24小时期限影响。" type="warning" :closable="false" />
+      <el-alert v-if="refundQuota" :type="refundQuota.remaining > 0 ? 'info' : 'warning'" :closable="false"
+        :title="`${refundQuota.year}年度剩余退款次数：${refundQuota.remaining} / ${refundQuota.limit}（北京时间自然年，处理中也占额度，系统自动退款不计入）`" />
       <el-table :data="recentOrders" empty-text="暂无订单">
         <el-table-column prop="orderNo" label="订单号" min-width="180" />
         <el-table-column prop="amount" label="金额（元）" width="110" />
@@ -323,7 +329,7 @@ onUnmounted(() => {
         </el-table-column>
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
-            <el-button v-if="row.refundEligible" type="danger" link :loading="refundSubmitting" @click="applyRefund(row)">全额退款</el-button>
+            <el-button v-if="row.refundEligible && refundQuota?.remaining > 0" type="danger" link :loading="refundSubmitting" @click="applyRefund(row)">全额退款</el-button>
             <span v-else>{{ row.status === 7 ? '等待渠道确认' : row.status === 3 ? '已退款' : '—' }}</span>
           </template>
         </el-table-column>

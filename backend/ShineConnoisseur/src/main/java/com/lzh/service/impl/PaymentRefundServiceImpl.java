@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.ZoneId;
+import com.lzh.vo.RefundQuotaVO;
 import java.util.List;
 import java.util.Objects;
 import static com.lzh.utils.SystemConstants.*;
@@ -20,6 +23,8 @@ import static com.lzh.utils.SystemConstants.*;
 @Service
 @RequiredArgsConstructor
 public class PaymentRefundServiceImpl implements PaymentRefundService {
+    private static final int ANNUAL_LIMIT = 3;
+    private final Clock refundClock;
     private final PaymentOrderMapper orderMapper;
     private final PaymentRefundMapper refundMapper;
     private final UserVipMapper vipMapper;
@@ -35,7 +40,11 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
         PaymentRefund existing = refundMapper.findByOrder(order.getId());
         // 重放受理请求不重新检查24小时，渠道处理时间不影响已经受理的退款。
         if (existing != null) return existing;
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
+        LocalDateTime yearStart = now.withDayOfYear(1).toLocalDate().atStartOfDay();
+        // 持有用户锁后使用当前读；即使外层事务已有旧快照，也不能绕过额度。
+        if (refundMapper.annualUsageForUpdate(userId, yearStart, yearStart.plusYears(1)).size() >= ANNUAL_LIMIT)
+            throw new BusinessException("本年度退款次数已达3次上限");
         PaymentOrder latest = orderMapper.selectOne(new LambdaQueryWrapper<PaymentOrder>()
                 .eq(PaymentOrder::getUserId, userId).isNotNull(PaymentOrder::getPayTime)
                 .orderByDesc(PaymentOrder::getPayTime).orderByDesc(PaymentOrder::getId).last("LIMIT 1 FOR UPDATE"));
@@ -95,7 +104,7 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
                 .eq(UserVip::getExpireTime, refund.getEntitlementExpireBefore())
                 .set(UserVip::getExpireTime, refund.getEntitlementExpireAfter())) != 1)
             throw new BusinessException("权益快照已变化，需要人工核对退款");
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         if (orderMapper.update(null, new LambdaUpdateWrapper<PaymentOrder>()
                 .eq(PaymentOrder::getId, refund.getOrderId()).eq(PaymentOrder::getStatus, ORDER_STATUS_REFUNDING)
                 .set(PaymentOrder::getStatus, ORDER_STATUS_REFUND)) != 1)
@@ -114,17 +123,33 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
                 .orderByDesc(PaymentOrder::getPayTime).orderByDesc(PaymentOrder::getId).last("LIMIT 1"));
     }
 
+    private LocalDateTime now() {
+        return LocalDateTime.ofInstant(refundClock.instant(), ZoneId.of("Asia/Shanghai"));
+    }
+
+    @Override
+    public RefundQuotaVO quota(Long userId) {
+        return quota(userId, now());
+    }
+
+    private RefundQuotaVO quota(Long userId, LocalDateTime now) {
+        LocalDateTime start = now.withDayOfYear(1).toLocalDate().atStartOfDay();
+        long used = refundMapper.annualUsage(userId, start, start.plusYears(1));
+        return new RefundQuotaVO(now.getYear(), ANNUAL_LIMIT, used, Math.max(0, ANNUAL_LIMIT - used));
+    }
+
     @Override
     public List<PaymentOrderVO> recentOrders(Long userId) {
         PaymentOrder latest = latestPaid(userId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
+        boolean hasQuota = quota(userId, now).remaining() > 0;
         boolean pending = refundMapper.pendingCount(userId) > 0;
         return orderMapper.selectList(new LambdaQueryWrapper<PaymentOrder>()
                 .eq(PaymentOrder::getUserId, userId).orderByDesc(PaymentOrder::getId).last("LIMIT 20"))
                 .stream().map(order -> {
                     PaymentOrderVO vo = BeanUtil.copyProperties(order, PaymentOrderVO.class);
                     vo.setRefundDeadline(order.getPayTime() == null ? null : order.getPayTime().plusHours(24));
-                    vo.setRefundEligible(!pending && latest != null && latest.getId().equals(order.getId())
+                    vo.setRefundEligible(hasQuota && !pending && latest != null && latest.getId().equals(order.getId())
                             && Objects.equals(order.getStatus(), ORDER_STATUS_SUCCESS)
                             && !order.getPayTime().isAfter(now) && !now.isAfter(vo.getRefundDeadline()));
                     PaymentRefund refund = refundMapper.findByOrder(order.getId());

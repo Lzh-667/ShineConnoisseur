@@ -39,6 +39,12 @@ public class PaymentOrderController {
         return Result.ok(paymentRefundService.recentOrders(UserHolder.getUser().getId()));
     }
 
+    @GetMapping("/refunds/quota")
+    @Operation(summary = "当前用户北京时间自然年退款额度")
+    public Result refundQuota() {
+        return Result.ok(paymentRefundService.quota(UserHolder.getUser().getId()));
+    }
+
     @PostMapping("/orders/{orderNo}/refund")
     @Operation(summary = "最近已支付订单24小时内全额退款")
     public Result refund(@PathVariable String orderNo) {

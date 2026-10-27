@@ -7,6 +7,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PaymentRefundMapper extends BaseMapper<PaymentRefund> {
+    @Select("SELECT id FROM payment_refund WHERE user_id = #{userId} AND status IN ('PROCESSING','SUCCESS') AND requested_at >= #{start} AND requested_at < #{end} FOR UPDATE")
+    List<Long> annualUsageForUpdate(@Param("userId") Long userId,
+            @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Select("SELECT COUNT(*) FROM payment_refund WHERE user_id = #{userId} AND status IN ('PROCESSING','SUCCESS') AND requested_at >= #{start} AND requested_at < #{end}")
+    long annualUsage(@Param("userId") Long userId,
+            @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
     // 所有用户退款、支付履约先锁用户，再锁订单/权益；禁止反向加锁。
     @Select("SELECT id FROM user WHERE id = #{userId} FOR UPDATE")
     Long lockUser(Long userId);

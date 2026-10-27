@@ -286,6 +286,10 @@ export function getRecentPaymentOrders() {
   return request({ url: '/payments/orders/recent', method: 'get' })
 }
 
+export function getRefundQuota() {
+  return request({ url: '/payments/refunds/quota', method: 'get' })
+}
+
 export function requestPaymentRefund(orderNo) {
   return request({ url: `/payments/orders/${encodeURIComponent(orderNo)}/refund`, method: 'post' })
 }

@@ -117,7 +117,9 @@ public class PaymentFulfillmentServiceImpl implements PaymentFulfillmentService 
             throw new BusinessException("支付订单状态已变化");
         }
 
-        int granted = userVipMapper.grantOrExtend(order.getUserId(), durationDays, now);
+        // user_vip 的 DATETIME 为秒精度，避免 MySQL 四舍五入把首购退款后的到期时间推到未来。
+        int granted = userVipMapper.grantOrExtend(order.getUserId(), durationDays,
+                now.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
         if (granted <= 0) {
             throw new BusinessException("VIP权益发放失败");
         }
