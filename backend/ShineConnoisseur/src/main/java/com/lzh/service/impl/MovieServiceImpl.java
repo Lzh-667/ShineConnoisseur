@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
@@ -92,6 +93,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     }
     @Override
     public Result listHotMovies(Integer current) {
+        current = Pagination.current(current);
         String key = RedisConstants.HOT_MOVIE_KEY;
         //1.获取总数
         Long total = stringRedisTemplate.opsForZSet().size(key);
@@ -246,6 +248,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     }
     @Override
     public Result listFavoriteMovies(Integer current) {
+        current = Pagination.current(current);
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.查redis
@@ -258,7 +261,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                 long end = start + size - 1;
                 Set<String> idSet = stringRedisTemplate.opsForZSet().reverseRange(key, start, end);
                 if (idSet == null || idSet.isEmpty()) {
-                    return Result.ok(new PageResult<MovieSimpleVO>(0L, Collections.emptyList()));
+                    return Result.ok(new PageResult<MovieSimpleVO>(total, Collections.emptyList()));
                 }
                 List<Long> ids = idSet.stream()
                         .map(Long::valueOf)
@@ -271,6 +274,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                         ));
                 List<MovieSimpleVO> vos = ids.stream()
                         .map(map::get)
+                        .filter(Objects::nonNull)
                         .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
                         .toList();
                 return Result.ok(new PageResult<>(total, vos));
@@ -283,19 +287,23 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         Page<MovieFavorite> pageResult = movieFavoriteService.query()
                 .eq("user_id", userId)
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         if (pageResult.getTotal() > 0) {
-            // 重建全量缓存
-            List<MovieFavorite> mfs = movieFavoriteService.query()
-                    .eq("user_id", userId)
-                    .orderByDesc("create_time")
-                    .list();
-            for (MovieFavorite mf : mfs) {
-                stringRedisTemplate.opsForZSet().add(key,
-                        mf.getMovieId().toString(),
-                        mf.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+            // 关联记录较多时使用有上限的数据库分页查询，避免全量重建缓存。
+            if (pageResult.getTotal() <= Pagination.MAX_CURRENT * SystemConstants.MAX_PAGE_SIZE) {
+                // 重建全量缓存
+                List<MovieFavorite> mfs = movieFavoriteService.query()
+                        .eq("user_id", userId)
+                        .orderByDesc("create_time")
+                        .list();
+                for (MovieFavorite mf : mfs) {
+                    stringRedisTemplate.opsForZSet().add(key,
+                            mf.getMovieId().toString(),
+                            mf.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                }
+                stringRedisTemplate.expire(key, RedisConstants.USER_FAVORITE_MOVIE_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
             }
-            stringRedisTemplate.expire(key, RedisConstants.USER_FAVORITE_MOVIE_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
 
             List<Long> ids = pageResult.getRecords().stream()
                     .map(MovieFavorite::getMovieId).toList();
@@ -309,6 +317,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
             List<MovieSimpleVO> vos = ids.stream()
                     .map(map::get)
+                    .filter(Objects::nonNull)
                     .map(movie -> BeanUtil.copyProperties(movie, MovieSimpleVO.class))
                     .toList();
             return Result.ok(new PageResult<>(pageResult.getTotal(), vos));
@@ -318,11 +327,9 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
     }
     @Override
     public Result searchMovies(String keyword, Integer current, String genre, String region) {
+        current = Pagination.current(current);
         if (StrUtil.isBlank(keyword) && StrUtil.isBlank(genre) && StrUtil.isBlank(region)) {
             return Result.ok(new PageResult<>(0L, Collections.emptyList()));
-        }
-        if (current == null || current < 1) {
-            current = 1;
         }
         int size = SystemConstants.MAX_PAGE_SIZE;
         // 尝试 ES 搜索
@@ -333,7 +340,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                     .map(h -> h.getContent().getId())
                     .toList();
             if (ids.isEmpty()) {
-                return Result.ok(new PageResult<>(0L, Collections.emptyList()));
+                return Result.ok(new PageResult<>(hits.getTotalHits(), Collections.emptyList()));
             }
             Map<Long, Movie> map = listByIds(ids).stream()
                     .collect(Collectors.toMap(Movie::getId, Function.identity()));
@@ -344,6 +351,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                     .toList();
             return Result.ok(new PageResult<>(hits.getTotalHits(), vos));
         } catch (Exception e) {
+            Pagination.rejectWindowFailure(e);
             log.error("ES 搜索失败，降级为 MySQL LIKE 查询: keyword={}", keyword, e);
         }
         // ES 不可用时降级为 MySQL LIKE
@@ -353,6 +361,7 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
                 .like(StrUtil.isNotBlank(region), "region", region)
                 .eq("status", SystemConstants.MOVIE_STATUS_NORMAL)
                 .orderByDesc("release_date")
+                .orderByDesc("id")
                 .page(new Page<>(current, size));
         List<MovieSimpleVO> records = page.getRecords().stream()
                 .map(m -> BeanUtil.copyProperties(m, MovieSimpleVO.class))
@@ -380,7 +389,10 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
         bool.filter(Query.of(q -> q.term(t -> t.field("status").value(1))));
         return NativeQuery.builder()
                 .withQuery(q -> q.bool(bool.build()))
+                .withTrackTotalHits(true)
                 .withPageable(PageRequest.of(current - 1, size))
+                .withSort(s -> s.score(v -> v.order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)))
+                .withSort(s -> s.field(v -> v.field("id").order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)))
                 .build();
     }
 }

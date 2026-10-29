@@ -333,4 +333,58 @@ class MovieServiceImplTest {
         movie.setRegion("美国");
         return movie;
     }
+
+    @Test
+    void favoriteAndHotEmptyPagePreserveTotal() {
+        when(zSetOperations.size(anyString())).thenReturn(15L);
+        when(zSetOperations.reverseRange(anyString(), anyLong(), anyLong())).thenReturn(Set.of());
+        var favorite = (com.lzh.common.PageResult<?>) movieService.listFavoriteMovies(3).getData();
+        var hot = (com.lzh.common.PageResult<?>) movieService.listHotMovies(3).getData();
+        assertEquals(15L, favorite.getTotal());
+        assertEquals(15L, hot.getTotal());
+        assertTrue(favorite.getRecords().isEmpty());
+        assertTrue(hot.getRecords().isEmpty());
+        movieService.listHotMovies(-1);
+        verify(zSetOperations).reverseRange(RedisConstants.HOT_MOVIE_KEY, 0, 9);
+    }
+
+    @Test
+    void searchEmptyPagePreservesEsTotal() {
+        org.springframework.data.elasticsearch.core.SearchHits<com.lzh.document.MovieDocument> hits = mock(org.springframework.data.elasticsearch.core.SearchHits.class);
+        when(hits.getSearchHits()).thenReturn(List.of());
+        when(hits.getTotalHits()).thenReturn(15L);
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(com.lzh.document.MovieDocument.class))).thenAnswer(call -> {
+            NativeQuery query = call.getArgument(0);
+            assertEquals(20, query.getPageable().getOffset());
+            assertEquals(10, query.getPageable().getPageSize());
+            assertEquals(Boolean.TRUE, query.getTrackTotalHits());
+            return hits;
+        });
+        var data = (com.lzh.common.PageResult<?>) movieService.searchMovies("test", 3, null, null).getData();
+        assertEquals(15L, data.getTotal());
+    }
+
+
+    @Test
+    void deepMovieSearchAndWindowFailureNeverFallBackToDatabase() {
+        assertThrows(com.lzh.common.BusinessException.class, () -> movieService.searchMovies("test", 101, null, null));
+        verifyNoInteractions(elasticsearchOperations);
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(com.lzh.document.MovieDocument.class)))
+                .thenThrow(new RuntimeException("Result window is too large"));
+        assertThrows(com.lzh.common.BusinessException.class, () -> movieService.searchMovies("test", 1, null, null));
+        verify(movieQueryChain, never()).page(any(Page.class));
+    }
+
+    @Test
+    void largeFavoriteSetDoesNotTriggerFullCacheRebuild() {
+        when(zSetOperations.size(anyString())).thenReturn(0L);
+        Page<MovieFavorite> page = new Page<>(1, 10);
+        page.setTotal(1001);
+        page.setRecords(List.of());
+        when(favoriteQueryChain.page(any(Page.class))).thenReturn(page);
+        doReturn(List.of()).when(movieService).listByIds(anyList());
+        movieService.listFavoriteMovies(1);
+        verify(favoriteQueryChain, never()).list();
+    }
+
 }

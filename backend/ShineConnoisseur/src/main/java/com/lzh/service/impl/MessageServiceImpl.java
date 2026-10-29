@@ -3,6 +3,7 @@ package com.lzh.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
@@ -36,6 +37,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     private VipIdentityService vipIdentityService;
     @Override
     public Result listAll(Integer current, Integer type) {
+        current = Pagination.current(current);
         //1.获取当前用户
         Long userId = UserHolder.getUser().getId();
         //2.分页查询
@@ -43,6 +45,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
                 .eq("user_id", userId)
                 .eq(type != null,"type",type)
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, 10));
         //3.提取发送用户id
         List<Long> fromUserIds = page.getRecords()
@@ -52,14 +55,8 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
                 .distinct()
                 .toList();
         //4.批量查询用户
-        if(fromUserIds.isEmpty()){
-            return Result.ok(new PageResult<>(0L,Collections.emptyList()));
-        }
-        List<User> users = userService.listByIds(fromUserIds);
+        List<User> users = fromUserIds.isEmpty() ? Collections.emptyList() : userService.listByIds(fromUserIds);
         //5.转换Map方便获取
-        if(users.isEmpty()){
-            return Result.ok(new PageResult<>(0L,Collections.emptyList()));
-        }
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(
                         User::getId,
@@ -78,7 +75,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
                     }
                     return vo;
                 }).toList();
-        vipIdentityService.enrich(vos.stream().map(MessageVO::getFromUser).toList());
+        vipIdentityService.enrich(vos.stream().map(MessageVO::getFromUser).filter(Objects::nonNull).toList());
 
         //7.封装并返回
         PageResult<MessageVO> result = new PageResult<>();

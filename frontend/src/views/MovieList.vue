@@ -12,7 +12,7 @@ const loading = ref(false)
 const movies = ref([])
 const current = ref(1)
 const total = ref(0)
-const searchPageSize = 8
+const searchPageSize = 10
 const hotPageSize = 10
 const filters = reactive({ title: '', genre: '', region: '' })
 const genres = ['剧情','犯罪','励志','爱情','社会','灾难','奇幻','冒险','历史','悬疑','喜剧','传记','家庭','战争','心理','科幻','歌舞','法律','惊悚','动作','动画','音乐','温情']
@@ -111,7 +111,8 @@ onMounted(() => loadHot())
           </div>
         </div>
       </div>
-      <el-pagination class="pager" background layout="prev, pager, next, jumper" :total="total" :page-size="hasFilter ? searchPageSize : hotPageSize" :current-page="current" @current-change="onPageChange" />
+      <p v-if="total > 1000" class="pagination-limit">仅展示前 1000 条结果，请缩小筛选范围。</p>
+      <el-pagination class="pager" background layout="prev, pager, next, jumper" :total="Math.min(total, 1000)" :page-size="isSearching ? searchPageSize : hotPageSize" :current-page="current" @current-change="onPageChange" />
     </template>
   </div>
 </template>

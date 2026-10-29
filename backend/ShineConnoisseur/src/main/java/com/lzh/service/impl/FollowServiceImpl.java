@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.BusinessException;
 import com.lzh.common.PageResult;
@@ -48,6 +49,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     private CacheAfterCommitService cacheAfterCommit;
     @Override
     public Result getFollowerList(Integer current) {
+        current = Pagination.current(current);
         // 1. 获取当前用户ID
         Long userId = UserHolder.getUser().getId();
         // 2. 查redis ZSet
@@ -61,20 +63,24 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         Page<UserFollow> pageResult = query()
                 .eq("follow_user_id", userId)
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
         if (pageResult.getTotal() > 0) {
-            // 重建全量缓存
-            List<UserFollow> follows = query()
-                    .eq("follow_user_id", userId)
-                    .orderByDesc("create_time")
-                    .list();
-            for (UserFollow f : follows) {
-                stringRedisTemplate.opsForZSet().add(key,
-                        f.getUserId().toString(),
-                        f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+            // 关联记录较多时使用有上限的数据库分页查询，避免全量重建缓存。
+            if (pageResult.getTotal() <= Pagination.MAX_CURRENT * SystemConstants.MAX_PAGE_SIZE) {
+                // 重建全量缓存
+                List<UserFollow> follows = query()
+                        .eq("follow_user_id", userId)
+                        .orderByDesc("create_time")
+                        .list();
+                for (UserFollow f : follows) {
+                    stringRedisTemplate.opsForZSet().add(key,
+                            f.getUserId().toString(),
+                            f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                }
+                stringRedisTemplate.expire(key, RedisConstants.FOLLOWER_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
             }
-            stringRedisTemplate.expire(key, RedisConstants.FOLLOWER_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
 
             List<Long> ids = pageResult.getRecords().stream()
                     .map(UserFollow::getUserId).toList();
@@ -85,6 +91,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
     }
     @Override
     public Result getFollowingList(Integer current) {
+        current = Pagination.current(current);
         // 1. 获取当前用户ID
         Long userId = UserHolder.getUser().getId();
         // 2. 查redis ZSet
@@ -98,20 +105,24 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         Page<UserFollow> pageResult = query()
                 .eq("user_id", userId)
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
         if (pageResult.getTotal() > 0) {
-            // 重建全量缓存
-            List<UserFollow> follows = query()
-                    .eq("user_id", userId)
-                    .orderByDesc("create_time")
-                    .list();
-            for (UserFollow f : follows) {
-                stringRedisTemplate.opsForZSet().add(key,
-                        f.getFollowUserId().toString(),
-                        f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+            // 关联记录较多时使用有上限的数据库分页查询，避免全量重建缓存。
+            if (pageResult.getTotal() <= Pagination.MAX_CURRENT * SystemConstants.MAX_PAGE_SIZE) {
+                // 重建全量缓存
+                List<UserFollow> follows = query()
+                        .eq("user_id", userId)
+                        .orderByDesc("create_time")
+                        .list();
+                for (UserFollow f : follows) {
+                    stringRedisTemplate.opsForZSet().add(key,
+                            f.getFollowUserId().toString(),
+                            f.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                }
+                stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
             }
-            stringRedisTemplate.expire(key, RedisConstants.FOLLOWING_TTL + RandomUtil.randomInt(10), TimeUnit.MINUTES);
 
             List<Long> ids = pageResult.getRecords().stream()
                     .map(UserFollow::getFollowUserId).toList();
@@ -137,6 +148,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
         return result;
     }
     private Result tryGetListFromRedis(String key, Integer current) {
+        current = Pagination.current(current);
         try {
             Long total = stringRedisTemplate.opsForZSet().size(key);
             if (total != null && total > 0) {
@@ -144,7 +156,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, UserFollow> imp
                 long end = start + SystemConstants.MAX_PAGE_SIZE - 1;
                 Set<String> idSet = stringRedisTemplate.opsForZSet().reverseRange(key, start, end);
                 if (idSet == null || idSet.isEmpty()) {
-                    return Result.ok(new PageResult<UserDTO>(0L, Collections.emptyList()));
+                    return Result.ok(new PageResult<UserDTO>(total, Collections.emptyList()));
                 }
                 List<Long> ids = idSet.stream()
                         .map(Long::valueOf)

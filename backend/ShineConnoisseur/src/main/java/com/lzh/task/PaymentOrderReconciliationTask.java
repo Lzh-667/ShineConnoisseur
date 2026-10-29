@@ -52,15 +52,24 @@ public class PaymentOrderReconciliationTask {
         activeOrders.forEach(order -> reconcileOne(order, now));
 
         // 兼容关单与支付回调极端乱序，以及升级前遗留的误关订单。
-        List<PaymentOrder> recentlyClosedOrders = paymentOrderMapper.selectList(
-                new LambdaQueryWrapper<PaymentOrder>()
-                        .eq(PaymentOrder::getStatus, SystemConstants.ORDER_STATUS_CLOSE)
-                        .gt(PaymentOrder::getUpdateTime, now.minusMinutes(10))
-                        .lt(PaymentOrder::getUpdateTime, now.minusSeconds(30))
-                        .orderByAsc(PaymentOrder::getUpdateTime)
-                        .last("LIMIT 100")
-        );
-        recentlyClosedOrders.forEach(order -> reconcileOne(order, now));
+        // 已关闭订单不刷新update_time；按ID游标分批扫描，避免前100条阻塞其余订单。
+        long afterId = 0;
+        List<PaymentOrder> recentlyClosedOrders;
+        do {
+            recentlyClosedOrders = paymentOrderMapper.selectList(
+                    new LambdaQueryWrapper<PaymentOrder>()
+                            .eq(PaymentOrder::getStatus, SystemConstants.ORDER_STATUS_CLOSE)
+                            .gt(PaymentOrder::getUpdateTime, now.minusMinutes(10))
+                            .lt(PaymentOrder::getUpdateTime, now.minusSeconds(30))
+                            .gt(PaymentOrder::getId, afterId)
+                            .orderByAsc(PaymentOrder::getId)
+                            .last("LIMIT 100")
+            );
+            recentlyClosedOrders.forEach(order -> reconcileOne(order, now));
+            if (!recentlyClosedOrders.isEmpty()) {
+                afterId = recentlyClosedOrders.getLast().getId();
+            }
+        } while (recentlyClosedOrders.size() == 100);
     }
 
     private void reconcileOne(PaymentOrder order, LocalDateTime now) {
@@ -76,9 +85,10 @@ public class PaymentOrderReconciliationTask {
                 stateService.resetInitiation(order.getId());
                 return;
             }
-            if (outcome == PaymentOrderReconciliationService.Outcome.UNPAID
+            if (!Objects.equals(order.getStatus(), SystemConstants.ORDER_STATUS_CLOSE)
+                    && (outcome == PaymentOrderReconciliationService.Outcome.UNPAID
                     || outcome == PaymentOrderReconciliationService.Outcome.NOT_FOUND
-                    || outcome == PaymentOrderReconciliationService.Outcome.UNKNOWN) {
+                    || outcome == PaymentOrderReconciliationService.Outcome.UNKNOWN)) {
                 stateService.touch(order.getId(), order.getStatus(), now);
             }
         } catch (RuntimeException e) {

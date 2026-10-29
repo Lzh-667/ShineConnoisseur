@@ -34,7 +34,7 @@ public class PaymentOrderController {
     private PaymentRefundService paymentRefundService;
 
     @GetMapping("/orders/recent")
-    @Operation(summary = "最近20笔订单及退款资格")
+    @Operation(summary = "最近20笔订单及退款资格，额外保留最近已支付订单")
     public Result recentOrders() {
         return Result.ok(paymentRefundService.recentOrders(UserHolder.getUser().getId()));
     }

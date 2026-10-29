@@ -9,9 +9,9 @@ import ReviewCard from '../components/ReviewCard.vue'
 const loading = ref(false)
 const reviews = ref([])
 const current = ref(1)
-const total = ref(0)
-const pageSize = 6
+const hasMore = ref(false)
 const searched = ref(false)
+let requestId = 0
 
 const filters = reactive({ keyword: '', spoiler: undefined })
 
@@ -21,6 +21,8 @@ function setSpoiler(val) {
   filters.spoiler = val
   if (searched.value && filters.keyword.trim()) {
     current.value = 1
+    reviews.value = []
+    hasMore.value = false
     loadResults()
   }
 }
@@ -29,27 +31,32 @@ const pageTitle = computed(() => {
   return searchLabel.value ? `搜索：${searchLabel.value}` : '搜索影评'
 })
 
-async function loadResults() {
+async function loadResults(page = 1) {
+  const id = ++requestId
   loading.value = true
   searchLabel.value = filters.keyword
   searched.value = true
   try {
-    const res = await searchReviews(filters.keyword, current.value, filters.spoiler)
+    const res = await searchReviews(filters.keyword, page, filters.spoiler)
+    if (id !== requestId) return
     const data = res.data ?? {}
-    reviews.value = data.list ?? data.records ?? []
-    total.value = data.total ?? data.pages ?? 0
-  } finally { loading.value = false }
+    if (page === 1) reviews.value = data.list ?? []
+    else reviews.value.push(...(data.list ?? []))
+    hasMore.value = data.hasMore ?? false
+    current.value = page
+  } finally { if (id === requestId) loading.value = false }
 }
 
 function onSearch() {
-  current.value = 1
   if (!filters.keyword.trim()) return
+  current.value = 1
+  reviews.value = []
+  hasMore.value = false
   loadResults()
 }
 
-function onPageChange(p) {
-  current.value = p
-  loadResults()
+function loadMore() {
+  if (!loading.value && hasMore.value) return loadResults(current.value + 1)
 }
 </script>
 
@@ -118,10 +125,10 @@ function onPageChange(p) {
           <span class="results-icon">✦</span>
           <h3 class="results-title">{{ pageTitle }}</h3>
         </div>
-        <span v-if="total > 0" class="results-count">共 {{ total }} 条结果</span>
+        <span v-if="reviews.length > 0" class="results-count">已加载 {{ reviews.length }} 条结果</span>
       </div>
 
-      <div v-if="loading" class="loading-state">
+      <div v-if="loading && current === 1" class="loading-state">
         <span class="loading-spinner"></span>
         <p>搜索中...</p>
       </div>
@@ -149,15 +156,8 @@ function onPageChange(p) {
             <ReviewCard :review="r" />
           </div>
         </div>
-        <el-pagination
-          class="pager"
-          background
-          layout="prev, pager, next, jumper"
-          :total="total"
-          :page-size="pageSize"
-          :current-page="current"
-          @current-change="onPageChange"
-        />
+        <el-button v-if="hasMore" class="pager" :loading="loading" @click="loadMore">加载更多</el-button>
+        <p v-if="current >= 100" class="pagination-limit">已到浏览上限，请缩小搜索范围。</p>
       </template>
     </div>
   </div>

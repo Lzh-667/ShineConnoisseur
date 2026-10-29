@@ -82,13 +82,13 @@ export function getMovieReviews(movieId, current = 1) {
 }
 
 /** 我的影评 */
-export function getMyReviews(current = 1) {
-  return request({ url: '/reviews/my', method: 'get', params: { current } })
+export function getMyReviews(cursor = null) {
+  return request({ url: '/reviews/scroll/my', method: 'get', params: { cursor } })
 }
 
 /** 某用户的影评 */
-export function getUserReviews(userId, current = 1) {
-  return request({ url: `/reviews/user/${userId}`, method: 'get', params: { current } })
+export function getUserReviews(userId, cursor = null) {
+  return request({ url: `/reviews/scroll/user/${userId}`, method: 'get', params: { cursor } })
 }
 
 /** 影评详情 */
@@ -124,18 +124,18 @@ export function publishComment(reviewId, data) {
 // ========== 评论 ==========
 
 /** 我的评论 */
-export function getMyComments(current = 1) {
-  return request({ url: '/reviewComments/my', method: 'get', params: { current } })
+export function getMyComments(cursor = null) {
+  return request({ url: '/reviewComments/scroll/my', method: 'get', params: { cursor } })
 }
 
 /** 根评论列表 */
-export function getRootComments(reviewId, current = 1) {
-  return request({ url: `/reviewComments/list/root/${reviewId}`, method: 'get', params: { current } })
+export function getRootComments(reviewId, cursor = null) {
+  return request({ url: `/reviewComments/scroll/root/${reviewId}`, method: 'get', params: { cursor } })
 }
 
 /** 子回复列表 */
-export function getChildComments(rootId, current = 1) {
-  return request({ url: `/reviewComments/list/children/${rootId}`, method: 'get', params: { current } })
+export function getChildComments(rootId, cursor = null) {
+  return request({ url: `/reviewComments/scroll/children/${rootId}`, method: 'get', params: { cursor } })
 }
 
 /** 点赞/取消点赞评论 */

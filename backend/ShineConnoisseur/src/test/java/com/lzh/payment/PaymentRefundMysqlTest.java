@@ -89,6 +89,11 @@ class PaymentRefundMysqlTest {
         }
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
+        // 在创建映射器元数据和插入处理器之前，注册生产环境使用的自动填充处理器。
+        var globalConfig = new com.baomidou.mybatisplus.core.config.GlobalConfig()
+                .setDbConfig(new com.baomidou.mybatisplus.core.config.GlobalConfig.DbConfig())
+                .setMetaObjectHandler(new com.lzh.config.MyMetaObjectHandler());
+        com.baomidou.mybatisplus.core.toolkit.GlobalConfigUtils.setGlobalConfig(config, globalConfig);
         config.addMapper(PaymentOrderMapper.class);
         config.addMapper(UserVipMapper.class);
         config.addMapper(PaymentRefundMapper.class);
@@ -97,6 +102,7 @@ class PaymentRefundMysqlTest {
         var factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(ds);
         factory.setConfiguration(config);
+        factory.setGlobalConfig(globalConfig);
         var sessions = new SqlSessionTemplate(factory.getObject());
         context = new AnnotationConfigApplicationContext();
         context.register(Config.class, PaymentRefundServiceImpl.class, PaymentFulfillmentServiceImpl.class,
@@ -371,6 +377,294 @@ class PaymentRefundMysqlTest {
 
     @Test void newerPaymentCommitWinsAgainstOlderRefundRequest() throws Exception {
         raceRefundAndPayment(false);
+    }
+
+    @Test void orderCreationIsIdempotentAndSnapshotSurvivesProductChanges() {
+        var user = new com.lzh.dto.UserDTO();
+        user.setId(userId);
+        com.lzh.utils.UserHolder.setUser(user);
+        try {
+            var service = context.getBean(IPaymentOrderService.class);
+            String key = UUID.randomUUID().toString();
+            var first = service.createOrder(productId, 2, key);
+            assertTrue(first.getSuccess());
+            var original = (com.lzh.vo.PaymentOrderVO) first.getData();
+            jdbc.update("UPDATE vip_product SET price=99.90,duration_days=365,status=0 WHERE id=?", productId);
+            var replay = service.createOrder(productId, 2, key);
+            assertTrue(replay.getSuccess());
+            assertEquals(original.getOrderNo(), ((com.lzh.vo.PaymentOrderVO) replay.getData()).getOrderNo());
+            assertFalse(service.createOrder(productId, 1, key).getSuccess());
+            assertFalse(service.createOrder(productId, 99, UUID.randomUUID().toString()).getSuccess());
+            assertFalse(service.createOrder(productId, 2, " ").getSuccess());
+            assertFalse(service.createOrder(productId, 2, "x".repeat(65)).getSuccess());
+            pay(original.getOrderNo());
+            assertEquals(baseline.plusDays(30), expiry());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM payment_order WHERE user_id=?", Integer.class, userId));
+        } finally { com.lzh.utils.UserHolder.removeUser(); }
+    }
+
+    @Test void showAndCancelAreOwnerScoped() {
+        String no = newOrder();
+        var user = new com.lzh.dto.UserDTO();
+        user.setId(userId + 999999);
+        com.lzh.utils.UserHolder.setUser(user);
+        try {
+            var service = context.getBean(IPaymentOrderService.class);
+            assertFalse(service.showOrder(no).getSuccess());
+            assertFalse(service.deleteOrder(no).getSuccess());
+            assertEquals(ORDER_STATUS_WAIT_PAY, status(no));
+        } finally { com.lzh.utils.UserHolder.removeUser(); }
+    }
+
+    @Test void wrongChannelAmountAndTransactionCannotGrantAgain() {
+        String no = newOrder();
+        assertThrows(BusinessException.class, () -> fulfillment.fulfill(no, 1, "wrong-channel", new BigDecimal("19.90")));
+        assertThrows(BusinessException.class, () -> fulfillment.fulfill(no, 2, "wrong-amount", new BigDecimal("0.01")));
+        assertEquals(ORDER_STATUS_WAIT_PAY, status(no));
+        assertEquals(baseline, expiry());
+        pay(no);
+        pay(no);
+        assertThrows(BusinessException.class, () -> fulfillment.fulfill(no, 2, "different-tx", new BigDecimal("19.90")));
+        assertEquals(baseline.plusDays(30), expiry());
+    }
+
+    @Test void transactionIdCannotBeReusedAcrossOrders() {
+        String first = paidOrder();
+        String next = newOrder();
+        assertThrows(org.springframework.dao.DuplicateKeyException.class,
+                () -> fulfillment.fulfill(next, 2, "wx-" + first, new BigDecimal("19.90")));
+        assertEquals(ORDER_STATUS_WAIT_PAY, status(next));
+        assertEquals(baseline.plusDays(30), expiry());
+    }
+
+    @Test void exact24HourBoundaryAllowedButOneMicrosecondLaterRejected() {
+        String no = paidOrder();
+        LocalDateTime paid = LocalDateTime.of(2031, 5, 1, 12, 0);
+        jdbc.update("UPDATE payment_order SET pay_time=? WHERE order_no=?", paid, no);
+        when(refundClock.instant()).thenReturn(paid.plusHours(24).plusNanos(1000)
+                .atZone(java.time.ZoneId.of("Asia/Shanghai")).toInstant());
+        assertThrows(BusinessException.class, () -> refunds.request(userId, no));
+        assertNull(refundMapper.findByOrder(orderId(no)));
+        when(refundClock.instant()).thenReturn(paid.plusHours(24)
+                .atZone(java.time.ZoneId.of("Asia/Shanghai")).toInstant());
+        assertNotNull(refunds.request(userId, no));
+    }
+
+    @Test void concurrentDuplicateCallbacksGrantExactlyOnce() throws Exception {
+        String no = newOrder();
+        try (var pool = Executors.newFixedThreadPool(8)) {
+            var gate = new CyclicBarrier(8);
+            var futures = new java.util.ArrayList<Future<?>>();
+            for (int i = 0; i < 8; i++) futures.add(pool.submit(() -> {
+                gate.await(10, TimeUnit.SECONDS); pay(no); return null;
+            }));
+            for (var future : futures) future.get(20, TimeUnit.SECONDS);
+        }
+        assertEquals(ORDER_STATUS_SUCCESS, status(no));
+        assertEquals(baseline.plusDays(30), expiry());
+    }
+
+    @Test void paymentWinsAgainstCloseInRealMysql() throws Exception { raceCloseAndPayment(true); }
+    @Test void closeWinsThenLatePaymentStillGrantsExactlyOnce() throws Exception { raceCloseAndPayment(false); }
+
+    private void raceCloseAndPayment(boolean paymentFirst) throws Exception {
+        String no = newOrder();
+        jdbc.update("UPDATE payment_order SET status=? WHERE order_no=?", ORDER_STATUS_CLOSING, no);
+        Long id = orderId(no);
+        var held = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var contenderStarted = new CountDownLatch(1);
+        var tx = new org.springframework.transaction.support.TransactionTemplate(
+                context.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var holder = pool.submit(() -> tx.executeWithoutResult(s -> {
+                if (paymentFirst) pay(no);
+                else assertTrue(states.transition(id, ORDER_STATUS_CLOSING, ORDER_STATUS_CLOSE));
+                held.countDown();
+                try { if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("gate timeout"); }
+                catch (InterruptedException e) { throw new IllegalStateException(e); }
+            }));
+            assertTrue(held.await(10, TimeUnit.SECONDS));
+            var contender = pool.submit(() -> {
+                contenderStarted.countDown();
+                if (paymentFirst) assertFalse(states.transition(id, ORDER_STATUS_CLOSING, ORDER_STATUS_CLOSE));
+                else pay(no);
+            });
+            try {
+                assertTrue(contenderStarted.await(5, TimeUnit.SECONDS));
+                assertThrows(TimeoutException.class, () -> contender.get(200, TimeUnit.MILLISECONDS));
+            } finally { release.countDown(); }
+            holder.get(15, TimeUnit.SECONDS);
+            contender.get(15, TimeUnit.SECONDS);
+        }
+        pay(no);
+        assertEquals(ORDER_STATUS_SUCCESS, status(no));
+        assertEquals("wx-" + no, jdbc.queryForObject("SELECT transaction_id FROM payment_order WHERE order_no=?", String.class, no));
+        assertEquals(baseline.plusDays(30), expiry());
+    }
+
+    /** 现状刻画：支付渠道永久失败时，目前没有终止状态或人工处理状态。 */
+    @Test void permanentRefundFailureKeepsQuotaAndBlocksPurchase() {
+        String no = paidOrder();
+        var refund = refunds.request(userId, no);
+        when(wechat.queryRefund(refund.getRefundNo())).thenReturn(com.lzh.enums.PaymentRefundResult.FAILED);
+        when(wechat.refundOrder(no, refund.getAmount(), refund.getRefundNo())).thenReturn(com.lzh.enums.PaymentRefundResult.FAILED);
+        for (int i = 0; i < 4; i++) processing.process(refund.getId());
+        assertEquals("PROCESSING", refundMapper.selectById(refund.getId()).getStatus());
+        assertEquals(1, refunds.quota(userId).used());
+        assertEquals(1, refundMapper.pendingCount(userId));
+        assertEquals(ORDER_STATUS_REFUNDING, status(no));
+        assertEquals(baseline.plusDays(30), expiry());
+    }
+
+    /** 最近已支付订单必须保留退款入口，不被后创建的未支付订单遮蔽。 */
+    @Test void recentTwentyRetainsTheOnlyRefundEligibleOrder() {
+        String paid = paidOrder();
+        for (int i = 0; i < 20; i++) newOrder();
+        var recent = refunds.recentOrders(userId);
+        assertEquals(21, recent.size());
+        assertTrue(recent.stream().anyMatch(o -> paid.equals(o.getOrderNo()) && o.isRefundEligible()));
+        assertNotNull(refunds.request(userId, paid));
+    }
+
+    @Test void signedAlipayCallbackRejectsWrongMerchantAndTampering() throws Exception {
+        String no = newOrder();
+        jdbc.update("UPDATE payment_order SET payment_method=1 WHERE order_no=?", no);
+        var generator = java.security.KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        var keys = generator.generateKeyPair();
+        var config = new com.lzh.config.AlipayConfig();
+        config.setAppId("audit-app"); config.setSellerId("audit-seller");
+        config.setAlipayPublicKey(java.util.Base64.getEncoder().encodeToString(keys.getPublic().getEncoded()));
+        var service = new AlipayServiceImpl(config, orders, fulfillment, states, refundMapper);
+        var params = new java.util.HashMap<String, String>();
+        params.put("out_trade_no", no); params.put("trade_no", "ali-" + no);
+        params.put("total_amount", "19.90"); params.put("trade_status", "TRADE_SUCCESS");
+        params.put("app_id", "audit-app"); params.put("seller_id", "wrong-seller");
+        signCallback(params, keys);
+        assertFalse(service.notify(new java.util.HashMap<>(params)));
+        assertEquals(ORDER_STATUS_WAIT_PAY, status(no));
+        params.put("seller_id", "audit-seller"); signCallback(params, keys);
+        var tampered = new java.util.HashMap<>(params);
+        tampered.put("total_amount", "0.01");
+        assertFalse(service.notify(tampered));
+        assertTrue(service.notify(new java.util.HashMap<>(params)));
+        assertTrue(service.notify(new java.util.HashMap<>(params)));
+        assertEquals(ORDER_STATUS_SUCCESS, status(no));
+        assertEquals(baseline.plusDays(30), expiry());
+    }
+
+    /** 现状刻画：忽略渠道已签名的支付时间，会重新开启 24 小时退款窗口。 */
+    @Test void delayedSignedCallbackCurrentlyAllowsRefundBeyondActualPayment24Hours() throws Exception {
+        String no = newOrder();
+        jdbc.update("UPDATE payment_order SET payment_method=1 WHERE order_no=?", no);
+        var generator = java.security.KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        var keys = generator.generateKeyPair();
+        var config = new com.lzh.config.AlipayConfig();
+        config.setAppId("audit-app"); config.setSellerId("audit-seller");
+        config.setAlipayPublicKey(java.util.Base64.getEncoder().encodeToString(keys.getPublic().getEncoded()));
+        var service = new AlipayServiceImpl(config, orders, fulfillment, states, refundMapper);
+        LocalDateTime actualPaid = LocalDateTime.now().minusHours(25).truncatedTo(ChronoUnit.SECONDS);
+        var params = new java.util.HashMap<String, String>();
+        params.put("out_trade_no", no); params.put("trade_no", "ali-" + no);
+        params.put("total_amount", "19.90"); params.put("trade_status", "TRADE_SUCCESS");
+        params.put("app_id", "audit-app"); params.put("seller_id", "audit-seller");
+        params.put("gmt_payment", actualPaid.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        signCallback(params, keys);
+        assertTrue(service.notify(params));
+        LocalDateTime stored = jdbc.queryForObject("SELECT pay_time FROM payment_order WHERE order_no=?", LocalDateTime.class, no);
+        assertTrue(stored.isAfter(actualPaid.plusHours(24)));
+        assertNotNull(refunds.request(userId, no));
+    }
+
+    private void signCallback(java.util.Map<String, String> params, java.security.KeyPair keys) throws Exception {
+        params.remove("sign"); params.remove("sign_type");
+        String content = new java.util.TreeMap<>(params).entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue()).collect(java.util.stream.Collectors.joining("&"));
+        String signature = com.alipay.api.internal.util.AlipaySignature.rsaSign(content,
+                java.util.Base64.getEncoder().encodeToString(keys.getPrivate().getEncoded()), "UTF-8", "RSA2");
+        params.put("sign", signature); params.put("sign_type", "RSA2");
+    }
+
+    @Test void concurrentCreateWithSameKeyReturnsSingleOrder() throws Exception {
+        var service = context.getBean(IPaymentOrderService.class);
+        String key = UUID.randomUUID().toString();
+        try (var pool = Executors.newFixedThreadPool(6)) {
+            var gate = new CyclicBarrier(6);
+            var results = new java.util.ArrayList<Future<String>>();
+            for (int i = 0; i < 6; i++) results.add(pool.submit(() -> {
+                var user = new com.lzh.dto.UserDTO(); user.setId(userId);
+                com.lzh.utils.UserHolder.setUser(user);
+                try {
+                    gate.await(10, TimeUnit.SECONDS);
+                    var result = service.createOrder(productId, 2, key);
+                    assertTrue(result.getSuccess());
+                    return ((com.lzh.vo.PaymentOrderVO) result.getData()).getOrderNo();
+                } finally { com.lzh.utils.UserHolder.removeUser(); }
+            }));
+            var numbers = new java.util.HashSet<String>();
+            for (var result : results) numbers.add(result.get(20, TimeUnit.SECONDS));
+            assertEquals(1, numbers.size());
+        }
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM payment_order WHERE user_id=? AND request_id=?", Integer.class, userId, key));
+    }
+
+    @Test void expiredVipRenewalStartsNowNotAtOldExpiry() {
+        jdbc.update("UPDATE user_vip SET expire_time=? WHERE user_id=?", LocalDateTime.now().minusDays(10), userId);
+        LocalDateTime before = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+        paidOrder();
+        assertFalse(expiry().isBefore(before.plusDays(30)));
+        assertFalse(expiry().isAfter(LocalDateTime.now().plusDays(30)));
+    }
+
+    @Test void changedVipSnapshotDoesNotSilentlyOverwriteOtherRights() {
+        String no = paidOrder();
+        var refund = refunds.request(userId, no);
+        jdbc.update("UPDATE user_vip SET expire_time=? WHERE user_id=?", baseline.plusDays(31), userId);
+        assertThrows(BusinessException.class, () -> refunds.complete(refund.getId()));
+        assertEquals(ORDER_STATUS_REFUNDING, status(no));
+        assertEquals("PROCESSING", refundMapper.selectById(refund.getId()).getStatus());
+        assertEquals(baseline.plusDays(31), expiry());
+    }
+
+    @Test void alipayUserRefundUsesUserRefundNumberAndRevokesOnce() {
+        String no = newOrder();
+        jdbc.update("UPDATE payment_order SET payment_method=1 WHERE order_no=?", no);
+        fulfillment.fulfill(no, 1, "ali-" + no, new BigDecimal("19.90"));
+        var refund = refunds.request(userId, no);
+        when(alipay.queryRefund(no, refund.getRefundNo())).thenReturn(com.lzh.enums.PaymentRefundResult.FAILED);
+        when(alipay.refundOrder(no, refund.getAmount(), refund.getRefundNo())).thenReturn(com.lzh.enums.PaymentRefundResult.SUCCESS);
+        processing.process(refund.getId());
+        processing.process(refund.getId());
+        verify(alipay, times(1)).refundOrder(no, refund.getAmount(), "UR" + no);
+        verifyNoInteractions(wechat);
+        assertEquals(ORDER_STATUS_REFUND, status(no));
+        assertEquals(baseline, expiry());
+    }
+
+    @Test void closedScanUsesRealSqlCursorAndDoesNotExtendWindow() {
+        LocalDateTime closedAt = LocalDateTime.now().minusMinutes(2).truncatedTo(ChronoUnit.SECONDS);
+        for (int i = 0; i < 101; i++) {
+            String no = newOrder();
+            jdbc.update("UPDATE payment_order SET status=?,update_time=? WHERE order_no=?", ORDER_STATUS_CLOSE, closedAt, no);
+        }
+        // 使用真实查询SQL，仅在测试边界追加用户范围，避免扫描其他用例的数据。
+        var scopedMapper = mock(PaymentOrderMapper.class);
+        when(scopedMapper.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenAnswer(invocation -> {
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.lzh.po.PaymentOrder> query = invocation.getArgument(0);
+            return orders.selectList(query.eq(com.lzh.po.PaymentOrder::getUserId, userId));
+        });
+        var reconciliation = mock(PaymentOrderReconciliationService.class);
+        when(reconciliation.reconcile(any())).thenReturn(PaymentOrderReconciliationService.Outcome.NOT_FOUND);
+        var task = new com.lzh.task.PaymentOrderReconciliationTask(scopedMapper, reconciliation, states);
+        task.reconcileOrders();
+        verify(reconciliation, times(101)).reconcile(any());
+        assertEquals(101, jdbc.queryForObject("SELECT COUNT(*) FROM payment_order WHERE user_id=? AND update_time=? AND status=?",
+                Integer.class, userId, closedAt, ORDER_STATUS_CLOSE));
+        jdbc.update("UPDATE payment_order SET update_time=? WHERE user_id=?", LocalDateTime.now().minusMinutes(11), userId);
+        task.reconcileOrders();
+        verify(reconciliation, times(101)).reconcile(any());
     }
 
     private void raceRefundAndPayment(boolean refundFirst) throws Exception {

@@ -401,7 +401,7 @@ class ReviewServiceImplTest {
     @Test
     void hotReviews_emptyZSet_returnsEmpty() {
         String key = RedisConstants.HOT_REVIEW_KEY;
-        when(zSetOperations.reverseRange(key, 0, 9)).thenReturn(Collections.emptySet());
+        when(zSetOperations.reverseRange(key, 0, 10)).thenReturn(Collections.emptySet());
 
         var result = reviewService.hotReviews(1);
 
@@ -411,7 +411,7 @@ class ReviewServiceImplTest {
     @Test
     void hotReviews_hasData_returnsList() {
         String key = RedisConstants.HOT_REVIEW_KEY;
-        when(zSetOperations.reverseRange(key, 0, 9)).thenReturn(Set.of("1", "2"));
+        when(zSetOperations.reverseRange(key, 0, 10)).thenReturn(Set.of("1", "2"));
 
         Review r1 = buildReview(1L, 1L, 1L, 8);
         Review r2 = buildReview(2L, 2L, 2L, 7);
@@ -507,4 +507,92 @@ class ReviewServiceImplTest {
 
         assertTrue(result.getSuccess());
     }
+
+    @Test
+    void myReviews_secondPageStartsAtEleventhRecord() {
+        var rows = java.util.stream.LongStream.rangeClosed(1, 21)
+                .mapToObj(id -> buildReview(1L, 1L, id, 8)).toList();
+        when(reviewQueryChain.page(any(Page.class))).thenAnswer(call -> {
+            Page<Review> page = call.getArgument(0);
+            assertEquals(10, page.offset());
+            assertEquals(11, page.getSize());
+            assertFalse(page.searchCount());
+            return page.setRecords(rows.subList(10, 21));
+        });
+        doReturn(List.of(buildUser(1L, "author"))).when(userService).listByIds(anySet());
+        doReturn(List.of(buildMovie(1L))).when(movieService).listByIds(anySet());
+        var data = (com.lzh.common.ScrollResult<com.lzh.vo.ReviewVO>) reviewService.myReviews(2).getData();
+        assertTrue(data.getHasMore());
+        assertEquals(java.util.stream.LongStream.rangeClosed(11, 20).boxed().toList(),
+                data.getList().stream().map(com.lzh.vo.ReviewVO::getId).toList());
+    }
+
+    @Test
+    void searchReviews_secondPageEsRequestUsesTenRowStride() {
+        org.springframework.data.elasticsearch.core.SearchHits<com.lzh.document.ReviewDocument> hits = mock(org.springframework.data.elasticsearch.core.SearchHits.class);
+        when(hits.getSearchHits()).thenReturn(List.of());
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(com.lzh.document.ReviewDocument.class)))
+                .thenAnswer(call -> {
+                    NativeQuery query = call.getArgument(0);
+                    assertEquals(10, query.getPageable().getOffset());
+                    assertEquals(11, query.getPageable().getPageSize());
+                    assertEquals(2, query.getSortOptions().size());
+                    return hits;
+                });
+        var data = (com.lzh.common.ScrollResult<?>) reviewService.searchReviews("test", 2, null).getData();
+        assertFalse(data.getHasMore());
+    }
+
+    @Test
+    void hotReviews_fullLastPageHasNoMoreAndLookaheadIsNotReturned() {
+        var ids = java.util.stream.LongStream.rangeClosed(1, 11).mapToObj(String::valueOf)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        when(zSetOperations.reverseRange(RedisConstants.HOT_REVIEW_KEY, 0, 10)).thenReturn(ids);
+        doReturn(List.of()).when(reviewService).listByIds(anyList());
+        var more = (com.lzh.common.ScrollResult<?>) reviewService.hotReviews(0).getData();
+        assertTrue(more.getHasMore());
+        verify(reviewService).listByIds(argThat((java.util.Collection<Long> values) -> values.size() == 10 && !values.contains(11L)));
+        ids.remove("11");
+        var last = (com.lzh.common.ScrollResult<?>) reviewService.hotReviews(1).getData();
+        assertFalse(last.getHasMore());
+        when(zSetOperations.reverseRange(RedisConstants.HOT_REVIEW_KEY, 10, 20)).thenReturn(Set.of());
+        var empty = (com.lzh.common.ScrollResult<?>) reviewService.hotReviews(2).getData();
+        assertFalse(empty.getHasMore());
+        assertTrue(empty.getList().isEmpty());
+    }
+
+
+    @Test
+    void userReviewCursorHasZeroOffsetAndReturnsNextPosition() {
+        var rows = java.util.stream.LongStream.rangeClosed(1, 11)
+                .mapToObj(id -> buildReview(1L, 1L, id, 8)).toList();
+        when(reviewQueryChain.page(any(Page.class))).thenAnswer(call -> {
+            Page<Review> page = call.getArgument(0);
+            assertEquals(0, page.offset());
+            return page.setRecords(rows);
+        });
+        doReturn(List.of(buildUser(1L, "author"))).when(userService).listByIds(anySet());
+        doReturn(List.of(buildMovie(1L))).when(movieService).listByIds(anySet());
+        var data = (com.lzh.common.ScrollResult<?>) reviewService.myReviewsCursor(null).getData();
+        assertEquals(10, data.getList().size());
+        assertTrue(data.getHasMore());
+        assertNotNull(data.getNextCursor());
+        assertFalse(com.lzh.utils.SeekCursor.after(data.getNextCursor(), "user-reviews:1", "like_count", "id").isEmptyOfWhere());
+    }
+
+    @Test
+    void searchDeepPageNeverCallsEsOrDatabase() {
+        assertThrows(com.lzh.common.BusinessException.class, () -> reviewService.searchReviews("test", 101, null));
+        verifyNoInteractions(elasticsearchOperations);
+        verify(reviewQueryChain, never()).page(any(Page.class));
+    }
+
+    @Test
+    void esWindowErrorDoesNotFallBackToMysql() {
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(com.lzh.document.ReviewDocument.class)))
+                .thenThrow(new RuntimeException("Result window is too large"));
+        assertThrows(com.lzh.common.BusinessException.class, () -> reviewService.searchReviews("test", 1, null));
+        verify(reviewQueryChain, never()).page(any(Page.class));
+    }
+
 }

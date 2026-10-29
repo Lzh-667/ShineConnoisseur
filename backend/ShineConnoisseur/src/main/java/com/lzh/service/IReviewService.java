@@ -27,4 +27,6 @@ public interface IReviewService extends IService<Review> {
     void updateHotReviewCache();
 
     Result searchReviews(String keyword, Integer current, Integer spoiler);
+    Result myReviewsCursor(String cursor);
+    Result getUserReviewsCursor(Long userId, String cursor);
 }

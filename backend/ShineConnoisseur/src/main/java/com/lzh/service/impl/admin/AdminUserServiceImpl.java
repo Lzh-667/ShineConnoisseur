@@ -2,6 +2,7 @@ package com.lzh.service.impl.admin;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.utils.AdminHolder;
@@ -28,9 +29,11 @@ public class AdminUserServiceImpl implements IAdminUserService {
     private StringRedisTemplate stringRedisTemplate;
     @Override
     public Result list(Integer current) {
+        current = Pagination.current(current);
         //1.查询用户列表
         Page<User> page = userService.query()
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         //2.包装为VO
         List<AdminUserVO> vo = page.getRecords()

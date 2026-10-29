@@ -3,6 +3,7 @@ package com.lzh.service.impl.admin;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
 import com.lzh.common.BusinessException;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
@@ -47,6 +48,7 @@ public class AdminReviewServiceImpl implements IAdminReviewService {
 
     @Override
     public Result listReviews(Integer current) {
+        current = Pagination.current(current);
         // 使用自定义Mapper方法绕过@TableLogic，查询status=1和status=2的影评
         IPage<Review> page = reviewMapper
                 .selectAdminPage(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));

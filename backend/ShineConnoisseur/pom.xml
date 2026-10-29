@@ -6,7 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.3</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/> <!-- 从仓库查找父项目 -->
     </parent>
     <groupId>com.lzh</groupId>
     <artifactId>ShineConnoisseur</artifactId>
@@ -45,12 +45,12 @@
             <version>1.18.32</version>
             <optional>true</optional>
         </dependency>
-        <!-- redis -->
+        <!-- Redis 缓存客户端 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
-        <!-- mybatis plus -->
+        <!-- MyBatis-Plus 数据访问框架 -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
@@ -61,52 +61,52 @@
             <artifactId>mybatis-plus-jsqlparser</artifactId>
             <version>3.5.12</version>
         </dependency>
-        <!--aop-->
+        <!-- 面向切面编程支持 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
-        <!--hutool-->
+        <!-- Hutool 工具库 -->
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
             <version>5.8.40</version>
         </dependency>
-        <!--mysql-->
+        <!-- MySQL 数据库驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>8.0.33</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- rabbitmq-->
+        <!-- RabbitMQ 消息队列支持 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
-        <!-- BCrypt -->
+        <!-- BCrypt 密码哈希算法 -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
-        <!-- elasticsearch -->
+        <!-- Elasticsearch 搜索引擎支持 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
         </dependency>
-        <!-- springdoc-openapi -->
+        <!-- OpenAPI 接口文档生成工具 -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.8.10</version>
         </dependency>
-        <!-- alipay -->
+        <!-- 支付宝支付接口 -->
         <dependency>
             <groupId>com.alipay.sdk</groupId>
             <artifactId>alipay-sdk-java</artifactId>
             <version>4.40.934.ALL</version>
         </dependency>
-        <!-- wechat -->
+        <!-- 微信支付接口 -->
         <dependency>
             <groupId>com.github.wechatpay-apiv3</groupId>
             <artifactId>wechatpay-java</artifactId>

@@ -2,6 +2,7 @@ package com.lzh.service.impl.admin;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
 import com.lzh.common.PageResult;
 import com.lzh.common.Result;
 import com.lzh.document.MovieDocument;
@@ -36,9 +37,11 @@ public class AdminMovieServiceImpl implements IAdminMovieService {
 
     @Override
     public Result listMovies(Integer current) {
+        current = Pagination.current(current);
         //1.查询电影列表
         Page<Movie> page = movieService.query()
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         //2.转换为VO
         List<AdminMovieVO> vos = page.getRecords()

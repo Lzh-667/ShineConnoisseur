@@ -29,6 +29,11 @@ const paymentDialogVisible = ref(false)
 const wechatQrCode = ref('')
 let pollTimer = null
 let refundPollTimer = null
+let orderGeneration = 0
+let querySequence = 0
+let activeQuery = null
+let disposed = false
+let purchaseIntent = null
 const recentOrders = ref([])
 const refundQuota = ref(null)
 const refundSubmitting = ref(false)
@@ -78,6 +83,34 @@ function createIdempotencyKey() {
   return `web-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function intentStorageKey() {
+  return `vip-purchase:${userStore.userInfo?.id ?? 'anonymous'}`
+}
+
+function readIntent() {
+  const owner = intentStorageKey()
+  if (purchaseIntent?.owner === owner) return purchaseIntent
+  purchaseIntent = null
+  try {
+    const stored = JSON.parse(window.sessionStorage.getItem(owner))
+    if (stored?.owner === owner && typeof stored.key === 'string' && stored.key.length <= 64
+      && stored.key.length > 0 && [1, 2].includes(stored.method) && stored.productId) purchaseIntent = stored
+  } catch { /* 存储不可用时仍保留当前页面内的重试幂等性。 */ }
+  return purchaseIntent
+}
+
+function saveIntent(intent) {
+  purchaseIntent = intent
+  try { window.sessionStorage.setItem(intent.owner, JSON.stringify(intent)) } catch { /* 使用内存回退。 */ }
+}
+
+function finishIntent(orderNo) {
+  const intent = readIntent()
+  if (intent?.orderNo !== orderNo) return
+  try { window.sessionStorage.removeItem(intent.owner) } catch { /* 不影响订单终态显示。 */ }
+  purchaseIntent = null
+}
+
 function formatDate(value) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('zh-CN', {
@@ -104,63 +137,127 @@ async function loadPage() {
 function openAlipayPage(html, targetWindow) {
   const payWindow = targetWindow && !targetWindow.closed
     ? targetWindow
-    : window.open('', '_blank', 'noopener,noreferrer')
+    : window.open('', '_blank')
   if (!payWindow) {
     ElMessage.warning('浏览器阻止了支付窗口，请允许本站打开新窗口后重试')
-    return
+    return false
   }
+  payWindow.opener = null
   payWindow.document.open()
   payWindow.document.write(html)
   payWindow.document.close()
+  return true
 }
 
 async function beginPayment() {
-  if (!selectedProduct.value) {
+  if (paying.value || disposed) return
+  if (!userStore.userInfo?.id) {
+    ElMessage.warning('用户信息尚未就绪，请登录后重试')
+    return
+  }
+  const savedIntent = readIntent()
+  if (!savedIntent && !selectedProduct.value) {
     ElMessage.warning('请先选择会员套餐')
     return
   }
 
   paying.value = true
+  stopPolling()
+  const generation = ++orderGeneration
+  const intent = savedIntent || {
+    owner: intentStorageKey(), productId: selectedProduct.value.id,
+    method: paymentMethod.value, key: createIdempotencyKey(),
+  }
+  if (savedIntent) ElMessage.info('正在恢复上一次购买，沿用原套餐和支付方式；如需更换，请先确认或取消原订单')
+  saveIntent(intent)
+  const isCurrent = () => !disposed && generation === orderGeneration && intent.owner === intentStorageKey()
   wechatQrCode.value = ''
-  const alipayWindow = paymentMethod.value === 1 ? window.open('', '_blank') : null
+  const alipayWindow = intent.method === 1 ? window.open('', '_blank') : null
   try {
-    const createRes = await createPaymentOrder(
-      selectedProduct.value.id,
-      paymentMethod.value,
-      createIdempotencyKey(),
+    const createRes = intent.orderNo ? await getPaymentOrder(intent.orderNo) : await createPaymentOrder(
+      intent.productId,
+      intent.method,
+      intent.key,
     )
+    if (!isCurrent()) { alipayWindow?.close(); return }
     order.value = createRes.data
+    saveIntent({ ...intent, orderNo: order.value.orderNo })
     paymentDialogVisible.value = true
+    if ([1, 2, 3, 6, 7, 8].includes(order.value.status)) {
+      alipayWindow?.close()
+      if (order.value.status !== 6) finishIntent(order.value.orderNo)
+      startPolling()
+      return
+    }
 
-    if (paymentMethod.value === 1) {
+    if (order.value.paymentMethod === 1) {
       const payRes = await startAlipay(order.value.orderNo)
-      openAlipayPage(payRes.data, alipayWindow)
-      ElMessage.success('支付宝收银台已在新窗口打开')
+      if (!isCurrent()) { alipayWindow?.close(); return }
+      if (openAlipayPage(payRes.data, alipayWindow)) ElMessage.success('支付宝收银台已在新窗口打开')
     } else {
       const payRes = await startWechatPay(order.value.orderNo)
-      wechatQrCode.value = await QRCode.toDataURL(payRes.data, {
+      if (!isCurrent()) return
+      const qrCode = await QRCode.toDataURL(payRes.data, {
         width: 240,
         margin: 2,
         color: { dark: '#161625', light: '#ffffff' },
       })
+      if (!isCurrent()) return
+      wechatQrCode.value = qrCode
     }
     startPolling()
   } catch (error) {
     if (alipayWindow && !alipayWindow.closed) alipayWindow.close()
+    // 下单结果不明时保留原幂等键；已知订单仍查询状态，不新建订单。
+    if (isCurrent() && order.value?.orderNo && order.value.orderNo === purchaseIntent?.orderNo) startPolling()
   } finally {
     paying.value = false
   }
 }
 
+async function resumeOrder(item) {
+  if (paying.value || disposed || !userStore.userInfo?.id) return
+  saveIntent({ owner: intentStorageKey(), productId: item.productId, method: item.paymentMethod,
+    key: item.requestId || createIdempotencyKey(), orderNo: item.orderNo })
+  await beginPayment()
+}
+
+async function startNewPurchase() {
+  if (paying.value) return
+  const owner = intentStorageKey()
+  try {
+    await ElMessageBox.confirm('上一次请求可能已经创建订单。请先在最近订单中确认或取消；继续将开始新的购买，不会取消旧订单。是否继续？', '开始新购买', {
+      type: 'warning', confirmButtonText: '确认开始新购买', cancelButtonText: '返回检查',
+    })
+    if (paying.value || disposed || owner !== intentStorageKey()) return
+    try { window.sessionStorage.removeItem(intentStorageKey()) } catch { /* 清理内存中的购买意图。 */ }
+    purchaseIntent = null
+    await beginPayment()
+  } catch { /* 用户取消时保留原购买意图。 */ }
+}
+
 async function refreshOrder(showMessage = false) {
   if (!order.value?.orderNo) return
+  const orderNo = order.value.orderNo
+  const generation = orderGeneration
+  const owner = intentStorageKey()
+  // 慢请求未返回时不叠加同一订单查询，避免所有响应都被更新的轮询淘汰。
+  if (activeQuery?.orderNo === orderNo && activeQuery.generation === generation && activeQuery.owner === owner) return
+  const sequence = ++querySequence
+  const request = { orderNo, generation, owner }
+  activeQuery = request
+  const isCurrent = () => !disposed && generation === orderGeneration && sequence === querySequence
+    && order.value?.orderNo === orderNo && owner === intentStorageKey()
   try {
-    const res = await getPaymentOrder(order.value.orderNo)
+    const res = await getPaymentOrder(orderNo)
+    if (!isCurrent()) return
     order.value = res.data
+    if ([1, 2, 3, 7, 8].includes(order.value.status)) finishIntent(orderNo)
     if (order.value.status === 1) {
       stopPolling()
       await loadRecentOrders()
       const vipRes = await getMyVip()
+      if (!isCurrent()) return
       vip.value = vipRes.data
       if (userStore.userInfo) userStore.userInfo.vip = vip.value?.vip === true
       ElMessage.success('支付成功，VIP 权益已生效')
@@ -172,14 +269,16 @@ async function refreshOrder(showMessage = false) {
       ElMessage.info('订单状态已刷新')
     }
   } catch {
-    stopPolling()
+    // 短暂网络失败不停止轮询；旧请求也不能停止新订单的轮询。
+  } finally {
+    if (activeQuery === request) activeQuery = null
   }
 }
 
 function startPolling() {
   stopPolling()
-  refreshOrder()
   pollTimer = window.setInterval(() => refreshOrder(), 2500)
+  refreshOrder()
 }
 
 function stopPolling() {
@@ -191,11 +290,15 @@ function stopPolling() {
 
 async function cancelOrder() {
   if (!order.value?.orderNo) return
+  const orderNo = order.value.orderNo
+  const generation = orderGeneration
   try {
     await ElMessageBox.confirm('确定取消当前支付订单吗？', '取消订单', {
       type: 'warning', confirmButtonText: '确认取消', cancelButtonText: '继续支付',
     })
-    await cancelPaymentOrder(order.value.orderNo)
+    if (generation !== orderGeneration || order.value?.orderNo !== orderNo || disposed) return
+    await cancelPaymentOrder(orderNo)
+    if (generation !== orderGeneration || order.value?.orderNo !== orderNo || disposed) return
     await refreshOrder()
     ElMessage.success('取消请求已提交')
   } catch (error) {
@@ -204,12 +307,13 @@ async function cancelOrder() {
 }
 
 function handleDialogClosed() {
+  orderGeneration++
   stopPolling()
   wechatQrCode.value = ''
 }
 
 onMounted(() => {
-  loadPage()
+  loadPage().catch(() => { /* 请求层已提示错误，可手动刷新。 */ })
   refundPollTimer = window.setInterval(async () => {
     if (refundPending.value || recentOrders.value.some(item => item.status === 8)) {
       try { await loadPage() } catch { /* 请求层统一提示，下次继续查询 */ }
@@ -217,6 +321,8 @@ onMounted(() => {
   }, 10000)
 })
 onUnmounted(() => {
+  disposed = true
+  orderGeneration++
   stopPolling()
   window.clearInterval(refundPollTimer)
 })
@@ -274,6 +380,7 @@ onUnmounted(() => {
           :key="product.id"
           class="plan-card"
           :class="{ selected: selectedProductId === product.id, recommended: index === 1 }"
+          :disabled="paying"
           @click="selectedProductId = product.id"
         >
           <span v-if="index === 1" class="recommend-badge">推荐</span>
@@ -289,7 +396,7 @@ onUnmounted(() => {
     <section v-if="products.length" class="checkout-card">
       <div class="payment-methods">
         <span class="checkout-label">支付方式</span>
-        <el-radio-group v-model="paymentMethod">
+        <el-radio-group v-model="paymentMethod" :disabled="paying">
           <el-radio-button :value="1">
             <el-icon><CreditCard /></el-icon>支付宝
           </el-radio-button>
@@ -306,6 +413,7 @@ onUnmounted(() => {
         <el-button class="pay-button" :loading="paying" :disabled="refundPending" @click="beginPayment">
           {{ vip?.vip ? '续订会员' : '立即开通' }}
         </el-button>
+        <el-button link :disabled="paying || refundPending" @click="startNewPurchase">开始新购买</el-button>
       </div>
     </section>
 
@@ -327,8 +435,9 @@ onUnmounted(() => {
         <el-table-column label="退款申请截止" min-width="170">
           <template #default="{ row }">{{ formatDate(row.refundDeadline) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" min-width="200">
           <template #default="{ row }">
+            <el-button link :disabled="paying" @click="resumeOrder(row)">{{ [0, 4, 5].includes(row.status) ? '继续支付' : '查看订单' }}</el-button>
             <el-button v-if="row.refundEligible && refundQuota?.remaining > 0" type="danger" link :loading="refundSubmitting" @click="applyRefund(row)">全额退款</el-button>
             <span v-else>{{ row.status === 7 ? '等待渠道确认' : row.status === 3 ? '已退款' : '—' }}</span>
           </template>
@@ -342,7 +451,7 @@ onUnmounted(() => {
       title="支付订单"
       width="min(460px, 92vw)"
       :close-on-click-modal="false"
-      @closed="handleDialogClosed"
+      @close="handleDialogClosed"
     >
       <div v-if="order" class="order-dialog">
         <div class="order-status-row">

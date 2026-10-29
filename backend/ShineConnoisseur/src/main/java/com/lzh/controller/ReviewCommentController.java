@@ -67,4 +67,18 @@ public class ReviewCommentController {
     public Result getTargetReview(@PathVariable("id") Long id){
         return reviewCommentService.getTargetReview(id);
     }
+    @GetMapping("/scroll/root/{reviewId}")
+    public Result rootCursor(@PathVariable Long reviewId, @RequestParam(required = false) String cursor) {
+        return reviewCommentService.listRootReviewCommentCursor(reviewId, cursor);
+    }
+
+    @GetMapping("/scroll/children/{rootId}")
+    public Result childrenCursor(@PathVariable Long rootId, @RequestParam(required = false) String cursor) {
+        return reviewCommentService.listChildReviewCommentCursor(rootId, cursor);
+    }
+
+    @GetMapping("/scroll/my")
+    public Result myCursor(@RequestParam(required = false) String cursor) {
+        return reviewCommentService.myReviewCommentsCursor(cursor);
+    }
 }

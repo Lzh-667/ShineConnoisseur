@@ -23,6 +23,7 @@ const abortCtrl = ref(null)
 const sessions = ref([])
 const sessionsLoading = ref(false)
 const sessionsCurrent = ref(1)
+const sessionsCursor = ref(null)
 const sessionsHasMore = ref(false)
 const sidebarOpen = ref(true)
 const messageListEl = ref(null)
@@ -78,14 +79,15 @@ function clearHistory(threadId) {
 
 // ============ 会话列表 ============
 async function loadSessions(page = 1) {
-  if (!userStore.isLoggedIn) return
+  if (!userStore.isLoggedIn || sessionsLoading.value) return
   sessionsLoading.value = true
   try {
-    const res = await listSessions(page)
+    const res = await listSessions(page === 1 ? null : sessionsCursor.value)
     const { list, hasMore } = res.data
     if (page === 1) sessions.value = list ?? []
     else sessions.value.push(...(list ?? []))
     sessionsHasMore.value = hasMore ?? false
+    sessionsCursor.value = res.data.nextCursor ?? null
     sessionsCurrent.value = page
   } catch { /* 拦截器已提示 */ } finally {
     sessionsLoading.value = false
@@ -243,6 +245,7 @@ onMounted(() => {
         <span>新对话</span>
       </button>
 
+      <el-button v-if="isLoggedIn" text :loading="sessionsLoading" @click="loadSessions(1)">刷新会话列表</el-button>
       <div v-if="!isLoggedIn" class="sidebar-guest">
         <p>登录后可在左侧查看会话历史</p>
         <el-button size="small" round @click="router.push('/login')">去登录</el-button>

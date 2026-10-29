@@ -5,18 +5,18 @@ secrets/
 *.p12
 *.pfx
 
-# Java / Maven
+# Java 编译产物与 Maven 构建输出
 **/target/
 *.class
 *.jar
 *.war
 *.log
 
-# Node / Vue
+# Node 与 Vue 依赖和构建输出
 node_modules/
 dist/
 
-# IDE
+# 集成开发环境配置
 .idea/
 *.iml
 .vscode/
@@ -27,22 +27,22 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Docker volumes（本地数据不提交）
+# Docker 数据卷（本地数据不提交）
 docker/mysql/data/
 docker/redis/data/
 docker/rabbitmq/data/
 docker/es/data/
 
-# Uploaded files
+# 上传文件
 uploads/
 
-# Raw SQL dump
+# 原始 SQL 导出文件
 dump_raw.sql
 
-# Claude local settings
+# Claude 本地配置
 .claude/*.local.json
 
-# Logs
+# 日志
 logs/
 *.log
 

@@ -8,6 +8,8 @@ import UserAvatar from '../components/UserAvatar.vue'
 import VipBadge from '../components/VipBadge.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+const commentCursor = ref(null)
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -33,20 +35,25 @@ async function loadReview() {
   } catch { notFound.value = true } finally { reviewLoading.value = false }
 }
 
+const commentCurrent = ref(1)
+
 async function loadComments(page = 1) {
+  if (commentLoading.value) return
   commentLoading.value = true
   try {
-    const res = await getRootComments(route.params.id, page)
+    const res = await getRootComments(route.params.id, page === 1 ? null : commentCursor.value)
     if (page === 1) comments.value = res.data?.list ?? []
     else comments.value.push(...(res.data?.list ?? []))
     commentHasMore.value = res.data?.hasMore ?? false
+    commentCursor.value = res.data?.nextCursor ?? null
+    commentCurrent.value = page
   } finally { commentLoading.value = false }
 }
 
 function loadMoreComments() {
   if (commentHasMore.value) {
-    const nextPage = Math.floor(comments.value.length / 10) + 1
-    loadComments(nextPage)
+    const nextPage = commentCurrent.value + 1
+    return loadComments(nextPage)
   }
 }
 

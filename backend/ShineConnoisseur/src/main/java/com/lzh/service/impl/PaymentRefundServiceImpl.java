@@ -144,9 +144,13 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
         LocalDateTime now = now();
         boolean hasQuota = quota(userId, now).remaining() > 0;
         boolean pending = refundMapper.pendingCount(userId) > 0;
-        return orderMapper.selectList(new LambdaQueryWrapper<PaymentOrder>()
-                .eq(PaymentOrder::getUserId, userId).orderByDesc(PaymentOrder::getId).last("LIMIT 20"))
-                .stream().map(order -> {
+        List<PaymentOrder> visible = new java.util.ArrayList<>(orderMapper.selectList(new LambdaQueryWrapper<PaymentOrder>()
+                .eq(PaymentOrder::getUserId, userId).orderByDesc(PaymentOrder::getId).last("LIMIT 20")));
+        // 额外保留最近已支付订单，避免未支付订单挤掉退款入口，最多返回21条。
+        if (latest != null && visible.stream().noneMatch(o -> o.getId().equals(latest.getId()))) {
+            visible.add(latest);
+        }
+        return visible.stream().map(order -> {
                     PaymentOrderVO vo = BeanUtil.copyProperties(order, PaymentOrderVO.class);
                     vo.setRefundDeadline(order.getPayTime() == null ? null : order.getPayTime().plusHours(24));
                     vo.setRefundEligible(hasQuota && !pending && latest != null && latest.getId().equals(order.getId())

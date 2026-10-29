@@ -12,4 +12,9 @@ import java.util.List;
 public class ScrollResult<T> {
     private List<T> list;
     private Boolean hasMore;
+    private String nextCursor;
+
+    public ScrollResult(List<T> list, Boolean hasMore) {
+        this(list, hasMore, null);
+    }
 }

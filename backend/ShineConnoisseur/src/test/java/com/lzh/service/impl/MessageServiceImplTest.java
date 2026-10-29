@@ -215,4 +215,22 @@ class MessageServiceImplTest {
         msg.setStatus(SystemConstants.MESSAGE_STATUS_UNREAD);
         return msg;
     }
+
+    @Test
+    void missingAllSendersDoesNotEraseMessagesOrTotal() {
+        Page<Message> page = new Page<>(1, 10);
+        page.setRecords(List.of(buildMessage(1L, 99L, SystemConstants.MESSAGE_TYPE_FOLLOW)));
+        page.setTotal(15);
+        when(messageQueryChain.page(any(Page.class))).thenReturn(page);
+        when(userService.listByIds(anyList())).thenReturn(List.of());
+        var data = (PageResult<MessageVO>) messageService.listAll(1, null).getData();
+        assertEquals(15L, data.getTotal());
+        assertEquals(1, data.getRecords().size());
+        assertNull(data.getRecords().getFirst().getFromUser());
+        page.setRecords(List.of());
+        var empty = (PageResult<?>) messageService.listAll(3, null).getData();
+        assertEquals(15L, empty.getTotal());
+        assertTrue(empty.getRecords().isEmpty());
+    }
+
 }

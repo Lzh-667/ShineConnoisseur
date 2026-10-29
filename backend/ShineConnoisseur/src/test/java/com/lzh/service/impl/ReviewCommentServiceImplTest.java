@@ -349,4 +349,56 @@ class ReviewCommentServiceImplTest {
         user.setNickname("nick" + id);
         return user;
     }
+
+    @Test
+    void allCommentListsUseLookaheadWithoutCountAndNormalizePage() {
+        when(reviewService.getById(1L)).thenReturn(buildReview(1L));
+        doReturn(buildComment(1L, 1L, 1L, 0L)).when(commentService).getById(1L);
+        when(commentQueryChain.page(any(com.baomidou.mybatisplus.extension.plugins.pagination.Page.class)))
+                .thenAnswer(call -> {
+                    com.baomidou.mybatisplus.extension.plugins.pagination.Page<ReviewComment> page = call.getArgument(0);
+                    assertEquals(11, page.getSize());
+                    assertFalse(page.searchCount());
+                    return page.setRecords(List.of());
+                });
+        commentService.listRootReviewComment(1L, 2);
+        commentService.listChildReviewComment(1L, 2);
+        commentService.myReviewComments(2);
+        verify(commentQueryChain, times(3)).page(argThat((com.baomidou.mybatisplus.extension.plugins.pagination.Page<ReviewComment> page) -> page.offset() == 10));
+        commentService.myReviewComments(-3);
+        verify(commentQueryChain).page(argThat((com.baomidou.mybatisplus.extension.plugins.pagination.Page<ReviewComment> page) -> page.offset() == 0));
+    }
+
+
+    @Test
+    void cursorCommentQueriesAlwaysHaveZeroOffset() {
+        when(reviewService.getById(1L)).thenReturn(buildReview(1L));
+        doReturn(buildComment(1L, 1L, 1L, 0L)).when(commentService).getById(1L);
+        when(commentQueryChain.and(any())).thenAnswer(call -> {
+            java.util.function.Consumer<QueryWrapper<ReviewComment>> predicate = call.getArgument(0);
+            QueryWrapper<ReviewComment> wrapper = new QueryWrapper<>();
+            predicate.accept(wrapper);
+            assertTrue(wrapper.getSqlSegment().contains("id <"));
+            return commentQueryChain;
+        });
+        when(commentQueryChain.page(any(com.baomidou.mybatisplus.extension.plugins.pagination.Page.class))).thenAnswer(call -> {
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<ReviewComment> page = call.getArgument(0);
+            assertEquals(0, page.offset());
+            assertEquals(11, page.getSize());
+            assertFalse(page.searchCount());
+            return page.setRecords(List.of());
+        });
+        var time = LocalDateTime.of(2026, 10, 29, 1, 0);
+        commentService.listRootReviewCommentCursor(1L, com.lzh.utils.SeekCursor.encode("root:1", 5, time, 100000));
+        commentService.listChildReviewCommentCursor(1L, com.lzh.utils.SeekCursor.encode("children:1", time, 100000));
+        commentService.myReviewCommentsCursor(com.lzh.utils.SeekCursor.encode("my-comments:1", time, 100000));
+        verify(commentQueryChain, times(3)).page(any(com.baomidou.mybatisplus.extension.plugins.pagination.Page.class));
+    }
+
+    @Test
+    void oldCommentPageBeyondLimitIsRejectedBeforeQuery() {
+        assertThrows(com.lzh.common.BusinessException.class, () -> commentService.myReviewComments(101));
+        verify(commentQueryChain, never()).page(any(com.baomidou.mybatisplus.extension.plugins.pagination.Page.class));
+    }
+
 }

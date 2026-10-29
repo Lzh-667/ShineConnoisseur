@@ -3,6 +3,8 @@ package com.lzh.service.impl;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
+import com.lzh.utils.SeekCursor;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.BusinessException;
 import com.lzh.common.Result;
@@ -134,6 +136,16 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Override
     public Result listRootReviewComment(Long reviewId, Integer current) {
+        return listRootReviewCommentPage(reviewId, current, null, false);
+    }
+
+    @Override
+    public Result listRootReviewCommentCursor(Long reviewId, String cursor) {
+        return listRootReviewCommentPage(reviewId, 1, cursor, true);
+    }
+
+    private Result listRootReviewCommentPage(Long reviewId, Integer current, String cursor, boolean seek) {
+        current = Pagination.current(current);
         Review review = reviewService.getById(reviewId);
         if(review == null|| !Objects.equals(review.getStatus(), SystemConstants.REVIEW_STATUS_NORMAL)){
             return Result.fail("评论不存在");
@@ -142,13 +154,18 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Long userId = UserHolder.getUser().getId();
         // 2. 查询一级评论（多查一条判断是否有下一页）
         int size = SystemConstants.MAX_PAGE_SIZE;
-        Page<ReviewComment> page = query()
+        var pageQuery = query()
                 .eq("review_id",reviewId)
                 .eq("reply_user_id",0)
                 .eq("status",SystemConstants.COMMENT_STATUS_NORMAL)
                 .orderByDesc("like_count")
                 .orderByDesc("create_time")
-                .page(new Page<>(current, size + 1));
+                .orderByDesc("id");
+        String scope = "root:" + reviewId;
+        if (seek && cursor != null && !cursor.isBlank()) {
+            pageQuery.and(w -> SeekCursor.apply(w, cursor, scope, "like_count", "create_time", "id"));
+        }
+        Page<ReviewComment> page = pageQuery.page(Pagination.lookahead(current));
         List<ReviewComment> rcList = page.getRecords();
         if(rcList.isEmpty()){
             return Result.ok(new ScrollResult<>(Collections.emptyList(), false));
@@ -204,11 +221,24 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 }).toList();
 
         // 7. 封装并返回
-        return Result.ok(new ScrollResult<>(rcListVO, hasMore));
+        ReviewComment last = rcList.getLast();
+        hasMore = hasMore && (seek || current < Pagination.MAX_CURRENT);
+        String nextCursor = seek && hasMore ? SeekCursor.encode(scope, last.getLikeCount(), last.getCreateTime(), last.getId()) : null;
+        return Result.ok(new ScrollResult<>(rcListVO, hasMore, nextCursor));
     }
 
     @Override
     public Result listChildReviewComment(Long rootId, Integer current) {
+        return listChildReviewCommentPage(rootId, current, null, false);
+    }
+
+    @Override
+    public Result listChildReviewCommentCursor(Long rootId, String cursor) {
+        return listChildReviewCommentPage(rootId, 1, cursor, true);
+    }
+
+    private Result listChildReviewCommentPage(Long rootId, Integer current, String cursor, boolean seek) {
+        current = Pagination.current(current);
         ReviewComment rootComment = getById(rootId);
         if(rootComment == null|| !Objects.equals(rootComment.getStatus(), SystemConstants.COMMENT_STATUS_NORMAL)){
             return Result.fail("评论不存在");
@@ -217,12 +247,17 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
         Long userId = UserHolder.getUser().getId();
         // 2. 查询子评论（多查一条判断是否有下一页）
         int size = SystemConstants.MAX_PAGE_SIZE;
-        Page<ReviewComment> page = query()
+        var pageQuery = query()
                 .eq("root_id",rootId)
                 .ne("reply_user_id",0)
                 .eq("status",SystemConstants.COMMENT_STATUS_NORMAL)
                 .orderByDesc("create_time")
-                .page(new Page<>(current, size + 1));
+                .orderByDesc("id");
+        String scope = "children:" + rootId;
+        if (seek && cursor != null && !cursor.isBlank()) {
+            pageQuery.and(w -> SeekCursor.apply(w, cursor, scope, "create_time", "id"));
+        }
+        Page<ReviewComment> page = pageQuery.page(Pagination.lookahead(current));
         List<ReviewComment> rcList = page.getRecords();
         if(rcList.isEmpty()){
             return Result.ok(new ScrollResult<>(Collections.emptyList(), false));
@@ -265,7 +300,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                         }
                 ).toList();
         // 7. 封装并返回
-        return Result.ok(new ScrollResult<>(rcListVO, hasMore));
+        ReviewComment last = rcList.getLast();
+        hasMore = hasMore && (seek || current < Pagination.MAX_CURRENT);
+        String nextCursor = seek && hasMore ? SeekCursor.encode(scope, last.getCreateTime(), last.getId()) : null;
+        return Result.ok(new ScrollResult<>(rcListVO, hasMore, nextCursor));
     }
 
     @Transactional
@@ -426,15 +464,30 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
 
     @Override
     public Result myReviewComments(Integer current) {
+        return myReviewCommentsPage(current, null, false);
+    }
+
+    @Override
+    public Result myReviewCommentsCursor(String cursor) {
+        return myReviewCommentsPage(1, cursor, true);
+    }
+
+    private Result myReviewCommentsPage(Integer current, String cursor, boolean seek) {
+        current = Pagination.current(current);
         // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
         // 2. 根据用户id查询（多查一条判断是否有下一页）
         int size = SystemConstants.MAX_PAGE_SIZE;
-        Page<ReviewComment> page = query()
+        var pageQuery = query()
                 .eq("user_id",userId)
                 .orderByDesc("create_time")
                 .eq("status", SystemConstants.COMMENT_STATUS_NORMAL)
-                .page(new Page<>(current, size + 1));
+                .orderByDesc("id");
+        String scope = "my-comments:" + userId;
+        if (seek && cursor != null && !cursor.isBlank()) {
+            pageQuery.and(w -> SeekCursor.apply(w, cursor, scope, "create_time", "id"));
+        }
+        Page<ReviewComment> page = pageQuery.page(Pagination.lookahead(current));
 
         List<ReviewComment> rcList = page.getRecords();
         if (rcList.isEmpty()) {
@@ -498,7 +551,10 @@ public class ReviewCommentServiceImpl extends ServiceImpl<ReviewCommentMapper, R
                 })
                 .toList();
         // 6. 封装并返回
-        return Result.ok(new ScrollResult<>(rcVOList, hasMore));
+        ReviewComment last = rcList.getLast();
+        hasMore = hasMore && (seek || current < Pagination.MAX_CURRENT);
+        String nextCursor = seek && hasMore ? SeekCursor.encode(scope, last.getCreateTime(), last.getId()) : null;
+        return Result.ok(new ScrollResult<>(rcVOList, hasMore, nextCursor));
     }
 
     @Override

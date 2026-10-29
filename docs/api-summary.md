@@ -230,3 +230,21 @@
 | 支付 | 7 | 5 个用户接口 + 2 个渠道验签回调 |
 | 管理员 | 15 | login 免登 |
 | **合计** | **68** | |
+
+
+## 2026-10-29 分页协议补充
+
+- 页码接口的 `current` 最大为 100，每页 10 条；超过上限返回业务错误（Agent 旧会话接口参数校验为 HTTP 422）。不要通过修改前端页码请求超出窗口的数据。
+- ES 结果窗口超限返回缩小筛选范围的提示，不再降级成 MySQL 深页查询。一般 ES 服务故障仍可在受限页码内降级。
+- 以下游标接口不接受页码；首次不传 `cursor`，后续原样传回响应的 `nextCursor`。响应 `data` 为 `{ list, hasMore, nextCursor }`；结束时 `nextCursor=null`。
+
+| GET 路径 | 用途 |
+|---|---|
+| `/reviews/scroll/my` | 我的影评，点赞数、ID 倒序 |
+| `/reviews/scroll/user/{userId}` | 指定用户影评，点赞数、ID 倒序 |
+| `/reviewComments/scroll/root/{reviewId}` | 根评论，点赞数、创建时间、ID 倒序 |
+| `/reviewComments/scroll/children/{rootId}` | 子回复，创建时间、ID 倒序 |
+| `/reviewComments/scroll/my` | 我的评论，创建时间、ID 倒序 |
+| `/api/agent/sessions/scroll` | 会话索引位置续读，最近更新时间倒序 |
+
+旧影评和评论页码接口保留，最多前 100 页。现有 Vue 页面已切换到对应游标接口。Java 游标保留排序值，末条记录删除后仍可继续；排序分值变化不提供快照保证。会话游标末条删除或分数变化时返回刷新提示。

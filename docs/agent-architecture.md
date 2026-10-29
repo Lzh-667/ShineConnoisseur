@@ -132,7 +132,7 @@ class AgentContext(BaseModel):
 | 会话元信息 | Redis Hash `agent:session:meta:{threadId}` | userId/title/messageCount/createdAt/updatedAt | 7 天 |
 | 对话历史 | LangGraph SQLite checkpointer | 完整消息流（供恢复/压缩） | 永久 |
 
-- 会话列表用 `SCAN` 匹配 + 内存过滤（避免 `KEYS` 阻塞），按 updatedAt 倒序分页（每页 10 条）
+- 会话列表前端使用 `/sessions/scroll` 游标接口：根据用户 ZSet 中上一页末条的排名继续读取，每批最多 11 个 ID，不再遍历前序会话。游标绑定用户、成员和分数；末条被删除或更新时间变化时要求刷新。每请求最多检查 110 个成员，清理大量过期索引时提示重试。旧 `/sessions?current=` 接口仅保留前 100 页兼容。
 - 删除会话需登录且校验归属（401/403）
 
 ---

@@ -90,4 +90,13 @@ public class ReviewController {
     ) {
         return reviewService.searchReviews(keyword, current, spoiler);
     }
+    @GetMapping("/scroll/my")
+    public Result myCursor(@RequestParam(required = false) String cursor) {
+        return reviewService.myReviewsCursor(cursor);
+    }
+
+    @GetMapping("/scroll/user/{userId}")
+    public Result userCursor(@PathVariable Long userId, @RequestParam(required = false) String cursor) {
+        return reviewService.getUserReviewsCursor(userId, cursor);
+    }
 }

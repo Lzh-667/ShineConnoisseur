@@ -19,4 +19,7 @@ public interface IReviewCommentService extends IService<ReviewComment> {
     Result myReviewComments(Integer current);
 
     Result getTargetReview(Long id);
+    Result listRootReviewCommentCursor(Long reviewId, String cursor);
+    Result listChildReviewCommentCursor(Long rootId, String cursor);
+    Result myReviewCommentsCursor(String cursor);
 }

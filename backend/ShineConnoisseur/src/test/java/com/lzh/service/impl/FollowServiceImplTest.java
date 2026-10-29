@@ -242,4 +242,31 @@ class FollowServiceImplTest {
         uf.setCreateTime(LocalDateTime.now());
         return uf;
     }
+
+    @Test
+    void outOfRangeRedisPagesRetainTotal() {
+        when(zSetOperations.size(anyString())).thenReturn(15L);
+        when(zSetOperations.reverseRange(anyString(), anyLong(), anyLong())).thenReturn(Set.of());
+        var following = (com.lzh.common.PageResult<?>) followService.getFollowingList(3).getData();
+        var followers = (com.lzh.common.PageResult<?>) followService.getFollowerList(3).getData();
+        assertEquals(15L, following.getTotal());
+        assertEquals(15L, followers.getTotal());
+        followService.getFollowingList(0);
+        verify(zSetOperations).reverseRange(RedisConstants.FOLLOWING_KEY + 1L, 0, 9);
+    }
+
+
+    @Test
+    void largeFollowSetsDoNotTriggerFullCacheRebuild() {
+        when(zSetOperations.size(anyString())).thenReturn(0L);
+        Page<UserFollow> page = new Page<>(1, 10);
+        page.setTotal(1001);
+        page.setRecords(List.of());
+        when(followQueryChain.page(any(Page.class))).thenReturn(page);
+        when(userService.listByIds(anyList())).thenReturn(List.of());
+        followService.getFollowingList(1);
+        followService.getFollowerList(1);
+        verify(followQueryChain, never()).list();
+    }
+
 }

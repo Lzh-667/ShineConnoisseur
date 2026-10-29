@@ -8,6 +8,8 @@ import { ElMessage } from 'element-plus'
 import UserAvatar from '../components/UserAvatar.vue'
 import VipBadge from '../components/VipBadge.vue'
 
+const nextCursor = ref(null)
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -40,13 +42,15 @@ async function load() {
 }
 
 async function loadReviews(page = 1) {
+  if (reviewLoading.value) return
   reviewLoading.value = true
   try {
-    const res = await getUserReviews(info.value.id, page)
+    const res = await getUserReviews(info.value.id, page === 1 ? null : nextCursor.value)
     const list = res.data?.list ?? []
     if (page === 1) reviews.value = list
     else reviews.value.push(...list)
     reviewHasMore.value = res.data?.hasMore ?? false
+    nextCursor.value = res.data?.nextCursor ?? null
     reviewCurrent.value = page
   } finally { reviewLoading.value = false }
 }

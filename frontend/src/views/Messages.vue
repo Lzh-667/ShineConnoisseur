@@ -113,11 +113,12 @@ onMounted(load)
         </div>
       </div>
 
+      <p v-if="total > 1000" class="pagination-limit">仅展示前 1000 条结果，请缩小筛选范围。</p>
       <el-pagination
         v-if="total > pageSize"
         class="pager"
         background layout="prev, pager, next"
-        :total="total" :page-size="pageSize"
+        :total="Math.min(total, 1000)" :page-size="pageSize"
         :current-page="current" @current-change="onPageChange"
       />
     </template>

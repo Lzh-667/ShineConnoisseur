@@ -10,6 +10,6 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface ReviewCommentMapper extends BaseMapper<ReviewComment> {
 
-    @Select("SELECT * FROM review_comment WHERE status IN (1, 2) ORDER BY create_time DESC")
+    @Select("SELECT * FROM review_comment WHERE status IN (1, 2) ORDER BY create_time DESC, id DESC")
     IPage<ReviewComment> selectAdminPage(Page<ReviewComment> page);
 }

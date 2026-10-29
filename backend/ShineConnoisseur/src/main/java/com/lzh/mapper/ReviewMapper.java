@@ -14,7 +14,7 @@ public interface ReviewMapper extends BaseMapper<Review> {
     @Select("SELECT DISTINCT movie_id FROM review WHERE user_id = #{userId}")
     java.util.List<Long> selectHistoricalMovieIds(@Param("userId") Long userId);
 
-    @Select("SELECT * FROM review WHERE status IN (1, 2) ORDER BY create_time DESC")
+    @Select("SELECT * FROM review WHERE status IN (1, 2) ORDER BY create_time DESC, id DESC")
     IPage<Review> selectAdminPage(Page<Review> page);
 
     @Select("""

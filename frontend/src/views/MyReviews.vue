@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { getMyReviews, deleteReview, updateReview } from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+const nextCursor = ref(null)
+
 const router = useRouter()
 
 const loading = ref(false)
@@ -17,12 +19,14 @@ const editForm = reactive({ rating: null, title: '', content: '', spoiler: 0 })
 const editLoading = ref(false)
 
 async function load(page = 1) {
+  if (loading.value) return
   loading.value = true
   try {
-    const res = await getMyReviews(page)
+    const res = await getMyReviews(page === 1 ? null : nextCursor.value)
     if (page === 1) list.value = res.data?.list ?? []
     else list.value.push(...(res.data?.list ?? []))
     hasMore.value = res.data?.hasMore ?? false
+    nextCursor.value = res.data?.nextCursor ?? null
     current.value = page
   } finally { loading.value = false }
 }

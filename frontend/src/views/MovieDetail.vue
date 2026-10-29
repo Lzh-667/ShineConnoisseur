@@ -50,7 +50,7 @@ async function loadReviews(page = 1) {
     const list = res.data?.records ?? []
     if (page === 1) reviews.value = list
     else reviews.value.push(...list)
-    reviewHasMore.value = res.data?.total ? reviews.value.length < res.data.total : false
+    reviewHasMore.value = res.data?.total ? page < 100 && reviews.value.length < res.data.total : false
     reviewCurrent.value = page
   } finally { reviewLoading.value = false }
 }

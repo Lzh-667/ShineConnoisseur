@@ -7,6 +7,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import UserAvatar from './UserAvatar.vue'
 import VipBadge from './VipBadge.vue'
 
+const childCursor = ref(null)
+
 const props = defineProps({
   comment: { type: Object, required: true },
   reviewId: { type: [String, Number], required: true },
@@ -28,24 +30,28 @@ const childComments = ref([])
 const childLoading = ref(false)
 const childLoaded = ref(false)
 const childHasMore = ref(false)
+const childCurrent = ref(1)
 
 function formatTime(t) { return t ? new Date(t).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '' }
 
 async function loadChildren(page = 1) {
+  if (childLoading.value) return
   childLoading.value = true
   try {
-    const res = await getChildComments(props.comment.id, page)
+    const res = await getChildComments(props.comment.id, page === 1 ? null : childCursor.value)
     const list = res.data?.list ?? []
     if (page === 1) childComments.value = list
     else childComments.value.push(...list)
     childHasMore.value = res.data?.hasMore ?? false
+    childCursor.value = res.data?.nextCursor ?? null
     childLoaded.value = true
+    childCurrent.value = page
   } finally { childLoading.value = false }
 }
 
 async function loadMoreChildren() {
   if (childHasMore.value) {
-    const nextPage = Math.ceil((childComments.value.length + 1) / 10)
+    const nextPage = childCurrent.value + 1
     await loadChildren(nextPage)
   }
 }

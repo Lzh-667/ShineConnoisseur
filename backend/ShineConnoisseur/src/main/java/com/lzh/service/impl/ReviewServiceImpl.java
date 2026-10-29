@@ -7,6 +7,8 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lzh.utils.Pagination;
+import com.lzh.utils.SeekCursor;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzh.common.BusinessException;
 import com.lzh.common.PageResult;
@@ -30,7 +32,6 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import com.lzh.service.MessageOutboxService;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
@@ -152,9 +153,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
     @Override
     public Result listReview(Long movieId, Integer current) {
-        if(current== null|| current < 1){
-            current = 1;
-        }
+        current = Pagination.current(current);
         // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
         // 2. 根据movieId查询movie
@@ -169,11 +168,12 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .eq("status", SystemConstants.REVIEW_STATUS_NORMAL)
                 .orderByDesc("like_count")
                 .orderByDesc("create_time")
+                .orderByDesc("id")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
 
         List<Review> reviewList = page.getRecords();
         if (reviewList.isEmpty()) {
-            return Result.ok(new PageResult<>(0L, Collections.emptyList()));
+            return Result.ok(new PageResult<>(page.getTotal(), Collections.emptyList()));
         }
         List<ReviewVO> vos = buildReviewVOS(reviewList, userId);
         return Result.ok(new PageResult<>(page.getTotal(), vos));
@@ -201,10 +201,12 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     }
     @Override
     public Result myReviews(Integer current) {
+        current = Pagination.current(current);
         return buildUserReviews(UserHolder.getUser().getId(), current);
     }
     @Override
     public Result getUserReviews(Long userId, Integer current) {
+        current = Pagination.current(current);
         User user = userService.getById(userId);
         if (user == null || !Objects.equals(user.getStatus(), SystemConstants.USER_STATUS_NORMAL)) {
             return Result.fail("用户不存在");
@@ -213,16 +215,37 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
     }
 
     private Result buildUserReviews(Long targetUserId, Integer current) {
-        if (current == null || current < 1) {
-            current = 1;
+        return buildUserReviews(targetUserId, current, null, false);
+    }
+
+    @Override
+    public Result myReviewsCursor(String cursor) {
+        return buildUserReviews(UserHolder.getUser().getId(), 1, cursor, true);
+    }
+
+    @Override
+    public Result getUserReviewsCursor(Long userId, String cursor) {
+        User user = userService.getById(userId);
+        if (user == null || !Objects.equals(user.getStatus(), SystemConstants.USER_STATUS_NORMAL)) {
+            return Result.fail("用户不存在");
         }
+        return buildUserReviews(userId, 1, cursor, true);
+    }
+
+    private Result buildUserReviews(Long targetUserId, Integer current, String cursor, boolean seek) {
+        current = Pagination.current(current);
         Long currentUserId = UserHolder.getUser().getId();
         int size = SystemConstants.MAX_PAGE_SIZE;
-        Page<Review> page = query()
+        var pageQuery = query()
                 .eq("user_id", targetUserId)
                 .eq("status", SystemConstants.REVIEW_STATUS_NORMAL)
                 .orderByDesc("like_count")
-                .page(new Page<>(current, size + 1));
+                .orderByDesc("id");
+        String scope = "user-reviews:" + targetUserId;
+        if (seek && cursor != null && !cursor.isBlank()) {
+            pageQuery.and(w -> SeekCursor.apply(w, cursor, scope, "like_count", "id"));
+        }
+        Page<Review> page = pageQuery.page(Pagination.lookahead(current));
 
         List<Review> reviewList = page.getRecords();
         if (reviewList.isEmpty()) {
@@ -240,7 +263,10 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         Map<Long, Movie> movieMap = getMovieMap(reviewList);
 
         List<ReviewVO> reviewVOList = getReviewVOList(reviewList, userMap, likeReviewIds, currentUserId, movieMap);
-        return Result.ok(new ScrollResult<>(reviewVOList, hasMore));
+        Review last = reviewList.getLast();
+        hasMore = hasMore && (seek || current < Pagination.MAX_CURRENT);
+        String nextCursor = seek && hasMore ? SeekCursor.encode(scope, last.getLikeCount(), last.getId()) : null;
+        return Result.ok(new ScrollResult<>(reviewVOList, hasMore, nextCursor));
     }
     @Transactional
     @Override
@@ -481,21 +507,20 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
     @Override
     public Result hotReviews(Integer current) {
-        if(current==null||current<=0){
-            current = 1;
-        }
+        current = Pagination.current(current);
         // 1. 获取当前用户
         Long userId = UserHolder.getUser().getId();
         // 2. 查询redis
         String key = RedisConstants.HOT_REVIEW_KEY;
         int size = SystemConstants.MAX_PAGE_SIZE;
         long start = (long) (current - 1) * size;
-        long end = start + size - 1;
+        long end = start + size;
         Set<String> setIds = stringRedisTemplate.opsForZSet().reverseRange(key, start,end);
         if(setIds == null || setIds.isEmpty()){
-            return Result.ok(Collections.emptyList());
+            return Result.ok(new ScrollResult<>(Collections.emptyList(), false));
         }
         List<Long> listIds = setIds.stream()
+                .limit(size)
                 .map(Long::valueOf)
                 .toList();
         List<Review> reviewList = listByIds(listIds);
@@ -521,7 +546,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
         // 7. 转化为VO
         List<ReviewVO> reviewVOList = getReviewVOList(sortReviewList, userMap, likeReviewIds, userId, movieMap);
         // 8. 判断是否还有下一页
-        boolean hasMore = setIds.size() == size;
+        boolean hasMore = setIds.size() > size;
         return Result.ok(new ScrollResult<>(reviewVOList,hasMore));
     }
     @Override
@@ -658,11 +683,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
 
     @Override
     public Result searchReviews(String keyword, Integer current, Integer spoiler) {
+        current = Pagination.current(current);
         if (StrUtil.isBlank(keyword)) {
             return Result.ok(new ScrollResult<>(Collections.emptyList(), false));
-        }
-        if (current == null || current < 1) {
-            current = 1;
         }
         int size = SystemConstants.MAX_PAGE_SIZE;
         Long userId = UserHolder.getUser().getId();
@@ -678,7 +701,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             }
             NativeQuery query = NativeQuery.builder()
                     .withQuery(q -> q.bool(bool.build()))
-                    .withPageable(PageRequest.of(current - 1, size + 1))
+                    .withPageable(Pagination.searchLookahead(current))
+                    .withSort(s -> s.score(v -> v.order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)))
+                    .withSort(s -> s.field(v -> v.field("id").order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)))
                     .build();
             SearchHits<ReviewDocument> hits = elasticsearchOperations.search(query, ReviewDocument.class);
             List<Long> ids = hits.getSearchHits().stream()
@@ -701,8 +726,9 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                     ids.stream().map(reviewMap::get).filter(Objects::nonNull).toList(),
                     userMap, likeIds, userId, movieMap
             );
-            return Result.ok(new ScrollResult<>(vos, hasMore));
+            return Result.ok(new ScrollResult<>(vos, hasMore && current < Pagination.MAX_CURRENT));
         } catch (Exception e) {
+            Pagination.rejectWindowFailure(e);
             log.error("ES 搜索影评失败，降级为 MySQL LIKE 查询: keyword={}", keyword, e);
         }
         Page<Review> page = query()
@@ -711,7 +737,8 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
                 .eq("status", SystemConstants.REVIEW_STATUS_NORMAL)
                 .orderByDesc("like_count")
                 .orderByDesc("create_time")
-                .page(new Page<>(current, size + 1));
+                .orderByDesc("id")
+                .page(Pagination.lookahead(current));
         List<Review> reviewList = page.getRecords();
         if (reviewList.isEmpty()) {
             return Result.ok(new ScrollResult<>(Collections.emptyList(), false));
@@ -721,7 +748,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewMapper, Review> impleme
             reviewList = reviewList.subList(0, size);
         }
         List<ReviewVO> vos = buildReviewVOS(reviewList, userId);
-        return Result.ok(new ScrollResult<>(vos, hasMore));
+        return Result.ok(new ScrollResult<>(vos, hasMore && current < Pagination.MAX_CURRENT));
     }
 
     private  List<ReviewVO> buildReviewVOS (List<Review> reviewList, Long userId) {

@@ -75,8 +75,8 @@ export async function chatStream({ threadId, message, extra, onEvent, signal }) 
 }
 
 /** 会话列表（需登录） */
-export function listSessions(current = 1) {
-  return request({ url: '/agent/sessions', method: 'get', params: { current } })
+export function listSessions(cursor = null) {
+  return request({ url: '/agent/sessions/scroll', method: 'get', params: { cursor } })
 }
 
 /** 删除会话（需登录） */
