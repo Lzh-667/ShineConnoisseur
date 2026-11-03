@@ -17,6 +17,7 @@ services:
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./docker/mysql/02-payment-refund.sql:/docker-entrypoint-initdb.d/02-payment-refund.sql:ro
       - ./docker/mysql/03-pagination-indexes.sql:/docker-entrypoint-initdb.d/03-pagination-indexes.sql:ro
+      - ./backend/ShineConnoisseur/src/main/resources/db/migrate_index_optimization.sql:/docker-entrypoint-initdb.d/04-index-optimization.sql:ro
     networks:
       - shine-network
     healthcheck:

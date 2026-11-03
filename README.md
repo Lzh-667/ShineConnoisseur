@@ -90,6 +90,8 @@ AI Agent 是可选服务。未启用 `ai` Profile 时主站和后端仍可正常
 
 > MySQL 初始化脚本只会在数据卷首次创建时执行。更新表结构后请使用迁移脚本；仅在确认不需要本地数据时，才执行 `docker compose down -v` 后重新初始化。
 
+索引升级请参阅 [索引优化与升级说明](docs/index-optimization-2026-11-01.md)。已有数据卷需执行后端的 `src/main/resources/db/migrate_index_optimization.sql`；重新启动容器不会自动迁移已有库。
+
 ## 本地开发
 
 ### 后端

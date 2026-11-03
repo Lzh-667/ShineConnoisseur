@@ -19,17 +19,12 @@ CREATE TABLE `message` (
                            `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 
                            `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
+                           KEY `idx_message_user_page` (user_id, create_time DESC, id DESC),
+                           KEY `idx_message_type_page` (user_id, type, create_time DESC, id DESC),
                            PRIMARY KEY (`id`),
-
-                           KEY `idx_user_id` (`user_id`),
-
                            KEY `idx_from_user_id` (`from_user_id`),
-
                            KEY `idx_create_time` (`create_time`),
-
                            KEY `idx_user_status` (`user_id`, `status`),
-
                            UNIQUE KEY `uk_biz_key` (`user_id`, `from_user_id`, `type`, `target_type`, `target_id`)
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息通知表';

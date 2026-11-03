@@ -18,9 +18,10 @@ CREATE TABLE `review` (
                           `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-用户删除，1-正常，2-管理员封禁',
                           `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                          KEY `idx_review_user_seek` (user_id, status, like_count DESC, id DESC),
+                          KEY `idx_review_movie_page` (movie_id, status, like_count DESC, create_time DESC, id DESC),
+                          KEY `idx_review_sync_seek` (update_time, id),
                           PRIMARY KEY (`id`),
-                          UNIQUE KEY `uk_user_movie` (`user_id`,`movie_id`,`status`),
-                          KEY `idx_movie_id` (`movie_id`),
-                          KEY `idx_user_id` (`user_id`),
+                          UNIQUE KEY `uk_user_movie` (`user_id`,`movie_id`),
                           KEY `idx_status_create_time` (`status`,`create_time`)
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='影评表'
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='影评表';

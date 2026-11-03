@@ -11,9 +11,9 @@ CREATE TABLE `review_comment` (
                                   `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-用户删除，1-正常，2-管理员封禁',
                                   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                  KEY `idx_comment_root_seek` (review_id, status, reply_user_id, like_count DESC, create_time DESC, id DESC),
+                                  KEY `idx_comment_child_seek` (root_id, status, create_time DESC, id DESC),
+                                  KEY `idx_comment_user_seek` (user_id, status, create_time DESC, id DESC),
                                   PRIMARY KEY (`id`),
-                                  KEY `idx_review_id` (`review_id`),
-                                  KEY `idx_root_id` (`root_id`),
-                                  KEY `idx_user_id` (`user_id`),
                                   KEY `idx_review_root` (`review_id`,`root_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='影评评论表'
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='影评评论表';

@@ -23,9 +23,9 @@ CREATE TABLE `movie` (
                          `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-下架，1-上架',
                          `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                         KEY `idx_movie_hot` (status, rating_count DESC, rating_sum DESC, release_date DESC),
                          PRIMARY KEY (`id`),
                          KEY `idx_title` (`title`),
                          KEY `idx_genre` (`genre`(50)),
-                         KEY `idx_status_rating` (`status`,`rating_sum`),
                          KEY `idx_release_date` (`release_date`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='电影表'
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='电影表';

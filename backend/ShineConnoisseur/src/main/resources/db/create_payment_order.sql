@@ -15,7 +15,8 @@ CREATE TABLE payment_order (
                                pay_time DATETIME DEFAULT NULL COMMENT '支付成功时间',
                                create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
+                               KEY `idx_order_status_update` (status, update_time, id),
+                               KEY `idx_order_user_paid` (user_id, pay_time DESC, id DESC),
                                PRIMARY KEY (id),
                                UNIQUE KEY uk_order_no (order_no),
                                UNIQUE KEY uk_user_request (user_id, request_id),
