@@ -348,10 +348,24 @@ class UserServiceImplTest {
         dto.setGender(1);
 
         when(userLambdaUpdateChain.update()).thenReturn(true);
+        // 更新后重新读取用户资料，避免 Spy 调用未注入 Mapper 的真实查询。
+        User updatedUser = buildUser(1L, "13800138000");
+        updatedUser.setNickname("新昵称");
+        updatedUser.setGender(1);
+        doReturn(updatedUser).when(userService).getById(1L);
+        String token = "profile-test-token";
+        when(valueOperations.get(RedisConstants.USER_TOKEN_KEY + 1L)).thenReturn(token);
 
         var result = userService.updateProfile(dto);
 
         assertTrue(result.getSuccess());
+        verify(userService).getById(1L);
+        String tokenKey = RedisConstants.LOGIN_USER_KEY + token;
+        verify(hashOperations).putAll(eq(tokenKey), argThat(values ->
+                "1".equals(values.get("id")) && "新昵称".equals(values.get("nickname"))));
+        verify(stringRedisTemplate).expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.MINUTES);
+        userHolderMock.verify(() -> UserHolder.setUser(argThat(user ->
+                Long.valueOf(1L).equals(user.getId()) && "新昵称".equals(user.getNickname()))));
     }
 
     // ==================== 修改密码 ====================
